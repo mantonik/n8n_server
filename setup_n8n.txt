@@ -62,3 +62,6 @@ docker run -it --rm \
     -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false \
     -v n8n_data:/home/node/.n8n \
     docker.n8n.io/n8nio/n8n &
+
+
+docker logs 
