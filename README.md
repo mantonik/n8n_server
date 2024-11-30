@@ -14,8 +14,7 @@ rm -f main.zip
 mv n8n_server-main n8n_server
 chmod 755 ~/bin/n8n_server/bin/*.sh
 crontab ~/bin/n8n_server/cron/root.cron 
-
-
-cd 
+cp -r ${HOME}/bin/n8n_server/etc ${HOME}/
+echo "Update ~/etc/n8n.cfg file 
 
 
