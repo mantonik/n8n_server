@@ -1,0 +1,64 @@
+#Settup n8n using docker instance
+
+
+
+https://docs.n8n.io/hosting/installation/docker/
+
+
+mkdir -p /home/node/.n8n
+docker volume create n8n_data
+docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
+
+http://localhost:5678
+
+
+
+touch ~/bin/start_n8n.sh 
+chmod 755 ~/bin/start_n8n.sh
+echo "#!/bin/bash" > ~/bin/start_n8n.sh 
+echo "docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n & " > ~/bin/start_n8n.sh 
+
+~/bin/start_n8n.sh 
+
+Add to crontab file for autostart 
+
+
+# reset passwrod 
+
+login to docekr image 
+
+
+docker exec -it <mycontainer> sh
+
+n8n user-management:reset
+
+restart docker instance 
+
+this will display initial registration page
+after login I see all my files 
+
+-- run docker with emails
+
+docker run -it --rm \
+ --name n8n \
+ -p 5678:5678 \
+ -e N8N_EMAIL_MODE=smtp \
+ -e N8N_SMTP_HOST=smtp.host \
+ -e N8N_SMTP_USER=user@domain.com \
+ -e N8N_SMTP_PASS=SomePassword \
+ -e N8N_SMTP_SENDER=user@domain.com \
+ -e WEBHOOK_URL=https://n8n.yourdomain.tld \
+ -v ~/.n8n:/home/node/.n8n \
+ docker.n8n.io/n8nio/n8n
+
+
+ WEBHOOK_URL=https://n8n.abc.com/
+
+
+ docker run -it --rm \
+    --name n8n \
+    -p 5678:5678 \
+    -e  WEBHOOK_URL=https://dmseo03.dmcloudarchitect.com/ \
+    -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false \
+    -v n8n_data:/home/node/.n8n \
+    docker.n8n.io/n8nio/n8n &
