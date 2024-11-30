@@ -1,5 +1,10 @@
 #!/bin/bash 
 
+#enable debug mode 
+if [ $1"x" == "dx" ]; then 
+    set -x 
+fi 
+
 # Load enviremnet file 
 . ~/etc/n8n.conf
 
