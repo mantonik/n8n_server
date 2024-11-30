@@ -1,8 +1,8 @@
 #Root cron 
 #restart n8n and update
-5 0 * * * /home/opc/bin/n8n_server/bin/start_n8n.sh
+5 0 * * * /root/bin/n8n_server/bin/start_n8n.sh
 #
 # OS update
-15 0 * * * /home/opc/bin/n8n_server/bin/update.sh
+15 0 * * * /root/bin/n8n_server/bin/update.sh
 #
 # end
