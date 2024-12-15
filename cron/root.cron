@@ -1,4 +1,7 @@
 #Root cron 
+#start n8n on reboot of the server 
+@reboot /root/bin/n8n_server/bin/start_n8n.sh
+#
 #restart n8n and update
 5 0 * * * /root/bin/n8n_server/bin/start_n8n.sh
 #

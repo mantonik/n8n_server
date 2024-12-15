@@ -27,6 +27,7 @@ Add to crontab file for autostart
 
 login to docekr image 
 
+docker exec -it n8n sh
 
 docker exec -it <mycontainer> sh
 
@@ -65,3 +66,30 @@ docker run -it --rm \
 
 
 docker logs 
+
+
+---
+
+#iptables -L
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination         
+CNI-FORWARD  all  --  anywhere             anywhere             /* CNI firewall plugin rules */
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain CNI-FORWARD (1 references)
+target     prot opt source               destination         
+CNI-ADMIN  all  --  anywhere             anywhere             /* CNI firewall plugin admin overrides */
+ACCEPT     all  --  anywhere             10.88.0.2            ctstate RELATED,ESTABLISHED
+ACCEPT     all  --  10.88.0.2            anywhere            
+
+Chain CNI-ADMIN (1 references)
+target     prot opt source               destination         
+root@app3:~/bin/n8n_server/bin
+
+
+----
