@@ -53,12 +53,12 @@ nohup docker run -it --rm \
     -e N8N_SMTP_PASS=${SMTP_API_KEY} \
     -e N8N_SMTP_SENDER=${SMTP_SENDER} \
     -e N8N_LOG_LEVEL=debug \
-    -e N8N_LOG_FILE_LOCATION=$HOME/logs/n8n.log \
+    -e N8N_LOG_FILE_LOCATION=$HOME/log/n8n.log \
     -e N8N_LOG_FILE_SIZE_MAX=50 \
     -e N8N_LOG_FILE_MAXCOUNT=60 \
     -e N8N_SMTP_SSL=true \
     -e N8N_DEFAULT_BINARY_DATA_MODE=filesystem \
-    docker.n8n.io/n8nio/n8n > ~/log/n8n_docker.log 2>&1 &
+    docker.n8n.io/n8nio/n8n > $HOME/log/n8n_docker.log 2>&1 &
 
 echo "Docker started"
 exit

@@ -16,6 +16,8 @@ mv n8n_server-main n8n_server
 chmod 755 ~/bin/n8n_server/bin/*.sh
 crontab ~/bin/n8n_server/cron/root.cron 
 \cp -rf ${HOME}/bin/n8n_server/etc ${HOME}/
+$HOME/bin/n8n_server/bin/start_n8n.sh
+
 echo ""
 echo "rename ~/etc/n8n.cfg.sample to ~/etc/n8n.vcfg "
 echo "Update ~/etc/n8n.cfg file "
