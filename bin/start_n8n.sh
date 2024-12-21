@@ -52,6 +52,7 @@ nohup docker run -it --rm \
     -e N8N_SMTP_USER=${SMTP_USER} \
     -e N8N_SMTP_PASS=${SMTP_API_KEY} \
     -e N8N_SMTP_SENDER=${SMTP_SENDER} \
+    -e N8N_LOG_OUTPUT=console,file \
     -e N8N_LOG_LEVEL=debug \
     -e N8N_LOG_FILE_LOCATION=/root/log/n8n.log \
     -e N8N_LOG_FILE_SIZE_MAX=50 \
