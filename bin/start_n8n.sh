@@ -53,7 +53,7 @@ nohup docker run -it --rm \
     -e N8N_SMTP_PASS=${SMTP_API_KEY} \
     -e N8N_SMTP_SENDER=${SMTP_SENDER} \
     -e N8N_LOG_LEVEL=debug \
-    -e N8N_LOG_FILE_LOCATION=$HOME/log/n8n.log \
+    -e N8N_LOG_FILE_LOCATION=/root/log/n8n.log \
     -e N8N_LOG_FILE_SIZE_MAX=50 \
     -e N8N_LOG_FILE_MAXCOUNT=60 \
     -e N8N_SMTP_SSL=true \
@@ -63,3 +63,12 @@ nohup docker run -it --rm \
 echo "Docker started"
 exit
 #END 
+
+#notes
+# https://docs.n8n.io/hosting/logging-monitoring/logging/#setup
+# Log level
+#silent: outputs nothing at all
+#error: outputs only errors and nothing else
+#warn: outputs errors and warning messages
+#info: contains useful information about progress
+#debug: the most verbose output. n8n outputs a lot of information to help you debug issues.
