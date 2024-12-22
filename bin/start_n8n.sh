@@ -39,7 +39,11 @@ docker pull docker.n8n.io/n8nio/n8n
 
 #Move current log
 DT=`date +%Y%m%d_%H%M`
-mv ~/log/n8n_docker.log ~/log/n8n_docker.${DT}.log 
+mv ~/log/n8n.log ~/log/n8n.${DT}.log 
+gzip ~/log/n8n.${DT}.log
+
+# remove log files older than 30 days from
+find ~/log -name "n8n*.log.gz" -mtime +10 -exec rm {} \; 
 
 nohup docker run -it --rm \
     --name n8n \
@@ -53,13 +57,13 @@ nohup docker run -it --rm \
     -e N8N_SMTP_PASS=${SMTP_API_KEY} \
     -e N8N_SMTP_SENDER=${SMTP_SENDER} \
     -e N8N_LOG_OUTPUT=console,file \
-    -e N8N_LOG_LEVEL=debug \
-    -e N8N_LOG_FILE_LOCATION=/root/log/n8n.log \
+    -e N8N_LOG_LEVEL=info \
+    #-e N8N_LOG_FILE_LOCATION=/root/log/n8n.log \
     -e N8N_LOG_FILE_SIZE_MAX=50 \
     -e N8N_LOG_FILE_MAXCOUNT=60 \
     -e N8N_SMTP_SSL=true \
     -e N8N_DEFAULT_BINARY_DATA_MODE=filesystem \
-    docker.n8n.io/n8nio/n8n > $HOME/log/n8n_docker.log 2>&1 &
+    docker.n8n.io/n8nio/n8n > $HOME/log/n8n.log 2>&1 &
 
 echo "Docker started"
 exit
