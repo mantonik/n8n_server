@@ -58,7 +58,6 @@ nohup docker run -it --rm \
     -e N8N_SMTP_SENDER=${SMTP_SENDER} \
     -e N8N_LOG_OUTPUT=console,file \
     -e N8N_LOG_LEVEL=info \
-    #-e N8N_LOG_FILE_LOCATION=/root/log/n8n.log \
     -e N8N_LOG_FILE_SIZE_MAX=50 \
     -e N8N_LOG_FILE_MAXCOUNT=60 \
     -e N8N_SMTP_SSL=true \
@@ -77,3 +76,5 @@ exit
 #warn: outputs errors and warning messages
 #info: contains useful information about progress
 #debug: the most verbose output. n8n outputs a lot of information to help you debug issues.
+
+    #-e N8N_LOG_FILE_LOCATION=/root/log/n8n.log \
