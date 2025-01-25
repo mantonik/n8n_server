@@ -21,9 +21,12 @@ sleep 5
 curl -vv http://localhost:5678/
 echo ""
 
-
+Run this only one time
 echo ""
-echo "rename ~/etc/n8n.cfg.sample to ~/etc/n8n.vcfg "
+echo "rename ~/etc/n8n.cfg.sample to ~/etc/n8n.cfg "
 echo "Update ~/etc/n8n.cfg file "
 
+#Update configuration file for nginx
+# if you already have nginx installed then you need to review configurationi file and update as needed.
+cp  ~/bin/n8n_server/server-config/etc/nginx/nginx.conf /etc/nginx/
 
