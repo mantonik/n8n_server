@@ -1,7 +1,8 @@
 #!/bin/bash 
 # 12/13/24 add prune command
 # 12/13/24 MA add log location, and rotate log on start 
-
+# 3/1/2025 MA remove execution saved data to reduce storage
+#
 # load profile 
 . /etc/profile 
 
@@ -44,6 +45,7 @@ gzip ~/log/n8n.${DT}.log
 
 # remove log files older than 30 days from
 find ~/log -name "n8n*.log.gz" -mtime +10 -exec rm {} \; 
+find ~/log -name "n8n*.log" -mtime +10 -exec rm {} \; 
 
 nohup docker run -it --rm \
     --name n8n \
@@ -62,6 +64,12 @@ nohup docker run -it --rm \
     -e N8N_LOG_FILE_MAXCOUNT=60 \
     -e N8N_SMTP_SSL=true \
     -e N8N_DEFAULT_BINARY_DATA_MODE=filesystem \
+    -e EXECUTIONS_DATA_SAVE_ON_SUCCESS=none \
+    -e EXECUTIONS_DATA_SAVE_ON_ERROR=all \
+    -e EXECUTIONS_DATA_SAVE_ON_PROGRESS=true \
+    -e EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true \
+    -e EXECUTIONS_DATA_PRUNE=true \
+    -e EXECUTIONS_DATA_MAX_AGE=24 \
     docker.n8n.io/n8nio/n8n > $HOME/log/n8n.log 2>&1 &
 
 echo "Docker started"
