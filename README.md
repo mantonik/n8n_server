@@ -21,17 +21,25 @@ crontab ~/bin/n8n_server/cron/root.cron
 $HOME/bin/n8n_server/bin/n8n_init.sh
 
 \cp -rf ${HOME}/bin/n8n_server/etc ${HOME}/
+
 $HOME/bin/n8n_server/bin/start_n8n.sh
 sleep 5
 curl -vv http://localhost:5678/
 echo ""
 
-Run this only one time
-echo ""
-echo "rename ~/etc/n8n.cfg.sample to ~/etc/n8n.cfg "
-echo "Update ~/etc/n8n.cfg file "
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Run this only one time, this will create custom n8n.cfg file with parameters required to run application
+cp ~/etc/n8n.cfg.sample ~/etc/n8n.cfg
+
+# ---------
 
 #Update configuration file for nginx
 # if you already have nginx installed then you need to review configurationi file and update as needed.
 cp  ~/bin/n8n_server/server-config/etc/nginx/nginx.conf /etc/nginx/
+service nginx restart 
+
+# Disable firewall ( if you have enabled in your server - if you control secutiry throw network layer you can disable, if not open only what is needed port 80, 443)
+sudo systemctl stop firewalld
+sudo systemctl disable firewalld
+sudo systemctl mask --now firewalld
 
