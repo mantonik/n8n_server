@@ -15,6 +15,11 @@ rm -f main.zip
 mv n8n_server-main n8n_server
 chmod 755 ~/bin/n8n_server/bin/*.sh
 crontab ~/bin/n8n_server/cron/root.cron 
+
+# If this is first time run you need to initialize and make base instalation 
+# run script 
+$HOME/bin/n8n_server/bin/n8n_init.sh
+
 \cp -rf ${HOME}/bin/n8n_server/etc ${HOME}/
 $HOME/bin/n8n_server/bin/start_n8n.sh
 sleep 5

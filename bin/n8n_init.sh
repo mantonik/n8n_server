@@ -1,4 +1,8 @@
 #!/bin/bash
+#Cleanup repository
+dnf clean all 
+dnf update
+
 #Install docker 
 # install nginx
 
