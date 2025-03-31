@@ -6,7 +6,7 @@ dnf update
 #Install docker 
 # install nginx
 
-yum install -y docker nginx
+yum install -y docker nginx policycoreutils-python-utils
 
 #Copy nginx config file 
 cp ../server-config/etc/nginx/nginx.conf /etc/nginx/nginx.conf

@@ -38,6 +38,14 @@ cp ~/etc/n8n.cfg.sample ~/etc/n8n.cfg
 cp  ~/bin/n8n_server/server-config/etc/nginx/nginx.conf /etc/nginx/
 service nginx restart 
 
+# Disable SELInux
+setenforce 0
+#semanage port -a -t http_port_t -p tcp 5678
+#semanage port -l | grep 5678
+
+#sudo semanage port -m -t http_port_t -p tcp 5678
+
+
 # Disable firewall ( if you have enabled in your server - if you control secutiry throw network layer you can disable, if not open only what is needed port 80, 443)
 sudo systemctl stop firewalld
 sudo systemctl disable firewalld
