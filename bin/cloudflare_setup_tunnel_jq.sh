@@ -22,6 +22,10 @@ fi
 export ACCOUNT_ID ZONE_ID CLOUDFLARE_API_TOKEN DNS_HOSTNAME LOCAL_NETWORK_IP LOCALHOST_PORT
 
 DT=`date +%Y%m%d%H%M`
+
+DNS_HOSTNAME=${DT}_$DNS_HOSTNAME
+export DNS_HOSTNAME
+
 echo "1. Verifying API Token..."
 curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -69,7 +73,7 @@ curl "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
 --data "{
   \"type\": \"CNAME\",
   \"proxied\": true,
-  \"name\": \"$DT_$DNS_HOSTNAME\",
+  \"name\": \"$DNS_HOSTNAME\",
   \"content\": \"$TUNNEL_ID.cfargotunnel.com\"
 }"
 
@@ -104,12 +108,16 @@ fi
 
 
 echo "6. Running tunnel..."
-cloudflared service install "$TUNNEL_TOKEN"
-#cloudflared tunnel run "$TUNNEL_ID"
 
 echo "Add tunnel ID ">> ~/etc/cloudflare.cfg
 echo "export TUNNEL_ID=$TUNNEL_ID" >> ~/etc/cloudflare.cfg
 echo "" >> ~/etc/cloudflare.cfg
+
+
+cloudflared service uninstall
+cloudflared service install "$TUNNEL_TOKEN"
+#cloudflared tunnel run "$TUNNEL_ID"
+
 
 echo "Validate tunnel"
 echo ""
