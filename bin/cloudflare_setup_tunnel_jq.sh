@@ -120,7 +120,7 @@ echo "Validate tunnel"
 echo ""
 curl https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNEL_ID \
 --header 'Content-Type: application/json' \
---header "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+--header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq .
 echo ""
 
 exit
