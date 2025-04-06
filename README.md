@@ -22,6 +22,10 @@ $HOME/bin/n8n_server/bin/n8n_init.sh
 
 \cp -rf ${HOME}/bin/n8n_server/etc ${HOME}/
 
+#Update nginx and restart 
+\cp  ~/bin/n8n_server/server-config/etc/nginx/nginx.conf /etc/nginx/
+service nginx restart 
+
 $HOME/bin/n8n_server/bin/start_n8n.sh
 sleep 5
 curl -vv http://localhost:5678/
@@ -35,19 +39,23 @@ cp ~/etc/n8n.cfg.sample ~/etc/n8n.cfg
 
 #Update configuration file for nginx
 # if you already have nginx installed then you need to review configurationi file and update as needed.
-cp  ~/bin/n8n_server/server-config/etc/nginx/nginx.conf /etc/nginx/
-service nginx restart 
+
 
 # Disable SELInux
 setenforce 0
 #semanage port -a -t http_port_t -p tcp 5678
 #semanage port -l | grep 5678
 
-#sudo semanage port -m -t http_port_t -p tcp 5678
-
-
 # Disable firewall ( if you have enabled in your server - if you control secutiry throw network layer you can disable, if not open only what is needed port 80, 443)
 sudo systemctl stop firewalld
 sudo systemctl disable firewalld
 sudo systemctl mask --now firewalld
 
+---
+Setup CloudFlare tunnel 
+
+
+Follow below tutorial to get API key and save a key in file $home/etc/coudflare.cfg file ( copy cloudflare.cfg.sample to cloudflare.cfg and update API key )
+
+Login to 
+https://developers.cloudflare.com/fundamentals/api/get-started/create-token/

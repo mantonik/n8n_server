@@ -1,0 +1,19 @@
+#Sample of the configuration file for cloudflare tunnel 
+# please update those parameters to match your account, your domain and your local network 
+
+ACCOUNT_ID="f1a970516fcb8b6903a95f2c46f2df50"
+CLOUDFLARE_API_TOKEN="h7vCh632jCtMP8MYx9aVu9MVIEA8_Z6kaBNYtfZA"
+ZONE_ID="4d4eb5c7680711db1ab2f01e4b8d142e"
+
+#DNS name for your zone
+DNS_HOSTNAME="n8nlocal2.dmcloudarchitect.com"
+
+#Local network 
+LOCAL_NETWORK_IP="192.168.10.0/24"
+
+#Port for your local application server - http, apache default port is 80 or 443, n8n default port is 5678
+LOCALHOST_PORT=80
+
+export ACCOUNT_ID CLOUDFLARE_API_TOKEN DNS_HOSTNAME LOCAL_NETWORK_IP LOCALHOST_PORT
+
+#END
