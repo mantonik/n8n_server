@@ -93,3 +93,10 @@ root@app3:~/bin/n8n_server/bin
 
 
 ----
+
+Test instance 
+test123456@mailsac.com
+Zaq123456
+
+--------------
+Cloudflare tunneling
