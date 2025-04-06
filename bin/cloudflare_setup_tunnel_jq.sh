@@ -31,13 +31,16 @@ echo "2. Creating tunnel..."
 TUNNEL_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel" \
      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
      -H "Content-Type: application/json" \
-     --data "{\"name\":\"${DNS_HOSTNAME}-tunnel\",\"config_src\":\"cloudflare\"}")
+     --data "{\"name\":\"${DNS_HOSTNAME}-tunnel-$DT\",\"config_src\":\"cloudflare\"}")
 
 TUNNEL_ID=$(echo "$TUNNEL_RESPONSE" | jq -r '.result.id')
 TUNNEL_TOKEN=$(echo "$TUNNEL_RESPONSE" | jq -r '.result.token')
 
 echo "Tunnel ID: $TUNNEL_ID"
 echo "Tunnel Token: $TUNNEL_TOKEN"
+
+exit
+
 
 echo "3a. Connect an application"
 echo "Add website to Cloufflare"

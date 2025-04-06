@@ -15,12 +15,15 @@ unzip main.zip
 rm -f main.zip
 mv n8n_server-main n8n_server
 
-cd !/bin
+cd ~/bin
 rm -rf n8n_server
 wget https://github.com/mantonik/n8n_server/archive/refs/heads/cloudflare.zip
 unzip cloudflare.zip 
 rm -f cloudflare.zip
 mv n8n_server-cloudflare n8n_server
+chmod 755 ~/bin/n8n_server/bin/*.sh
+cd /root/bin/n8n_server/bin
+
 
 
 chmod 755 ~/bin/n8n_server/bin/*.sh
