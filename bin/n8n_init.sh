@@ -23,8 +23,12 @@ cp ../server-config/etc/nginx/nginx.conf /etc/nginx/nginx.conf
 
 #Start services 
 service nginx start 
-
 service docker start
+
+#Enable service on server start
+systemctl enable nginx 
+systemctl enable docker 
+
 
 #Create n8n_data
 docker volume create n8n_data
