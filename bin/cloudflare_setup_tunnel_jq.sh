@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -x 
 CONFIG_FILE=~/etc/cloudflare.cfg
 
 # Load config if it exists
@@ -38,7 +39,9 @@ TUNNEL_TOKEN=$(echo "$TUNNEL_RESPONSE" | jq -r '.result.token')
 echo "Tunnel ID: $TUNNEL_ID"
 echo "Tunnel Token: $TUNNEL_TOKEN"
 
-echo "3. Creating tunnel config..."
+echo "3a. Connect an application"
+echo "Add website to Cloufflare"
+
 curl -s --request PUT \
 "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNEL_ID/configurations" \
 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -48,7 +51,7 @@ curl -s --request PUT \
     \"ingress\": [
       {
         \"hostname\": \"$DNS_HOSTNAME\",
-        \"service\": \"http://$localhost:$LOCALHOST_PORT\"
+        \"service\": \"http://localhost:$LOCALHOST_PORT\"
       },
       {
         \"service\": \"http_status:404\"
@@ -57,25 +60,48 @@ curl -s --request PUT \
   }
 }" | jq .
 
+
+echo "Create DNS record"
+
+curl "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+--data "{
+  \"type\": \"CNAME\",
+  \"proxied\": true,
+  \"name\": \"$DNS_HOSTNAME\",
+  \"content\": \"$TUNNEL_ID.cfargotunnel.com\"
+}"
+
+
+
+echo "3b. Connect a network"
+
+curl "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/teamnet/routes" \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+--data "{
+  \"network\": \"$LOCAL_NETWORK_IP\",
+  \"tunnel_id\": \"$TUNNEL_ID\",
+  \"comment\": \"Private network route\"
+}"
+
+
+
+
 echo "4. Installing cloudflared..."
 if ! command -v cloudflared &> /dev/null; then
-    sudo apt update && sudo apt install -y cloudflared || \
-    curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb && \
-    sudo dpkg -i cloudflared.deb
+    # Add cloudflared.repo to /etc/yum.repos.d/ 
+    curl -fsSl https://pkg.cloudflare.com/cloudflared-ascii.repo | sudo tee /etc/yum.repos.d/cloudflared.repo
+
+    #update repo
+    sudo yum -y update
+
+    # install cloudflared
+    sudo yum -y install cloudflared
+
 fi
 
-echo "5. Saving credentials..."
-mkdir -p ~/.cloudflared
-echo "$TUNNEL_TOKEN" > ~/.cloudflared/${TUNNEL_ID}.json
-
-echo "tunnel: $TUNNEL_ID
-credentials-file: /home/$USER/.cloudflared/${TUNNEL_ID}.json
-
-ingress:
-  - hostname: $DNS_HOSTNAME
-    service: http://$LOCAL_NETWORK_IP:$LOCALHOST_PORT
-  - service: http_status:404
-" > ~/.cloudflared/config.yml
 
 echo "6. Running tunnel..."
 cloudflared tunnel run "$TUNNEL_ID"
@@ -87,4 +113,5 @@ curl https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNE
 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
 echo ""
 
+exit
 

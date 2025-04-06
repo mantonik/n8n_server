@@ -8,11 +8,20 @@ some parts will be runned as root user but file system will be under opc or user
 
 mkdir ~/bin
 cd ~/bin 
+
 rm -rf n8n_server
 wget https://github.com/mantonik/n8n_server/archive/refs/heads/main.zip
 unzip main.zip 
 rm -f main.zip
 mv n8n_server-main n8n_server
+
+rm -rf n8n_server
+wget https://github.com/mantonik/n8n_server/archive/refs/heads/cloudflare.zip
+unzip cloudflare.zip 
+rm -f cloudflare.zip
+mv n8n_server-cloudflare n8n_server
+
+
 chmod 755 ~/bin/n8n_server/bin/*.sh
 crontab ~/bin/n8n_server/cron/root.cron 
 
