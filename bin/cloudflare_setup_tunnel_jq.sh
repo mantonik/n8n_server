@@ -114,4 +114,3 @@ curl https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNE
 echo ""
 
 exit
-
