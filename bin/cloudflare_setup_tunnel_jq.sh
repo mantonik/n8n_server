@@ -23,9 +23,6 @@ export ACCOUNT_ID ZONE_ID CLOUDFLARE_API_TOKEN DNS_HOSTNAME LOCAL_NETWORK_IP LOC
 
 DT=`date +%Y%m%d%H%M`
 
-DNS_HOSTNAME=${DT}_$DNS_HOSTNAME
-export DNS_HOSTNAME
-
 echo "1. Verifying API Token..."
 curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
