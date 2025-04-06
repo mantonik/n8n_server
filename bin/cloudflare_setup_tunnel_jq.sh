@@ -104,7 +104,8 @@ fi
 
 
 echo "6. Running tunnel..."
-cloudflared tunnel run "$TUNNEL_ID"
+cloudflared service install "$TUNNEL_ID"
+#cloudflared tunnel run "$TUNNEL_ID"
 
 echo "Validate tunnel"
 echo ""
