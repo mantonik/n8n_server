@@ -69,7 +69,7 @@ curl "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
 --data "{
   \"type\": \"CNAME\",
   \"proxied\": true,
-  \"name\": \"$DNS_HOSTNAME\",
+  \"name\": \"$DT_$DNS_HOSTNAME\",
   \"content\": \"$TUNNEL_ID.cfargotunnel.com\"
 }"
 
