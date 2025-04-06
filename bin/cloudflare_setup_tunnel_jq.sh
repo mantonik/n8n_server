@@ -104,8 +104,12 @@ fi
 
 
 echo "6. Running tunnel..."
-cloudflared service install "$TUNNEL_ID"
+cloudflared service install "$TUNNEL_TOKEN"
 #cloudflared tunnel run "$TUNNEL_ID"
+
+echo "Add tunnel ID ">> ~/etc/cloudflare.cfg
+echo "export TUNNEL_ID=$TUNNEL_ID" >> ~/etc/cloudflare.cfg
+echo "" >> ~/etc/cloudflare.cfg
 
 echo "Validate tunnel"
 echo ""
