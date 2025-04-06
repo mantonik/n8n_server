@@ -39,9 +39,6 @@ TUNNEL_TOKEN=$(echo "$TUNNEL_RESPONSE" | jq -r '.result.token')
 echo "Tunnel ID: $TUNNEL_ID"
 echo "Tunnel Token: $TUNNEL_TOKEN"
 
-exit
-
-
 echo "3a. Connect an application"
 echo "Add website to Cloufflare"
 
