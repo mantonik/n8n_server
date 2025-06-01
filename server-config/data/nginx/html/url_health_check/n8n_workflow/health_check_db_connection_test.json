@@ -1,0 +1,115 @@
+{
+  "name": "MySQL Connection Test - Working Structure",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'MySQL Connection Successful!' as message, NOW() as current_time, DATABASE() as database_name;",
+        "options": {}
+      },
+      "id": "mysql-test-001",
+      "name": "Test MySQL Connection",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = DATABASE();",
+        "options": {}
+      },
+      "id": "mysql-test-002",
+      "name": "Check Database Tables",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Display connection test results\nconst connectionResult = $('Test MySQL Connection').first().json;\nconst tableResult = $('Check Database Tables').first().json;\n\nconsole.log('=== MySQL Connection Test Results ===');\nconsole.log(`Message: ${connectionResult.message}`);\nconsole.log(`Database: ${connectionResult.database_name}`);\nconsole.log(`Current Time: ${connectionResult.current_time}`);\nconsole.log(`Tables in Database: ${tableResult.table_count}`);\nconsole.log('Connection Status: SUCCESS');\n\nreturn {\n  json: {\n    connection_status: 'SUCCESS',\n    database: connectionResult.database_name,\n    timestamp: connectionResult.current_time,\n    message: connectionResult.message,\n    existing_tables: tableResult.table_count\n  }\n};"
+      },
+      "id": "display-results-001",
+      "name": "Display Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Test MySQL Connection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test MySQL Connection": {
+      "main": [
+        [
+          {
+            "node": "Check Database Tables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Database Tables": {
+      "main": [
+        [
+          {
+            "node": "Display Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "test-working-v1"
+}

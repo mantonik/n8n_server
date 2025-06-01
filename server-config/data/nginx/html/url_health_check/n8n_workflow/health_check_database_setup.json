@@ -1,327 +1,257 @@
 {
-  "name": "Health Check - Database Setup",
+  "name": "Health Check - Database Setup - Sequential",
   "nodes": [
     {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Link URLs to alert groups\nINSERT IGNORE INTO url_alert_groups (url_id, group_id, alert_on_down, alert_on_up, alert_on_timeout, alert_on_error) VALUES\n-- Google (critical) -> Critical Ops + Executives\n(1, 1, TRUE, TRUE, TRUE, TRUE),\n(1, 4, TRUE, FALSE, TRUE, TRUE),\n-- HTTP Test Success -> Dev Team\n(2, 2, TRUE, TRUE, TRUE, TRUE),\n-- HTTP Test Error -> Dev Team  \n(3, 2, TRUE, TRUE, TRUE, TRUE),\n-- GitHub -> Dev Team + Business Hours\n(4, 2, TRUE, TRUE, TRUE, TRUE),\n(4, 3, TRUE, FALSE, FALSE, FALSE);"
-      },
-      "id": "setup-url-group-links",
-      "name": "Link URLs to Alert Groups",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        900,
-        300
-      ],
-      "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
-        }
-      }
-    },
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Create alert group members table\nCREATE TABLE IF NOT EXISTS alert_group_members (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    group_id INT NOT NULL,\n    notification_type ENUM('email', 'sms', 'telegram', 'webhook') NOT NULL,\n    destination VARCHAR(255) NOT NULL,\n    member_name VARCHAR(100),\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE CASCADE\n);"
-      },
-      "id": "setup-group-members-table",
-      "name": "Create Alert Group Members Table",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        460,
-        680
-      ],
-      "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Create URL alert groups linking table\nCREATE TABLE IF NOT EXISTS url_alert_groups (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    group_id INT NOT NULL,\n    alert_on_down BOOLEAN DEFAULT TRUE,\n    alert_on_up BOOLEAN DEFAULT TRUE,\n    alert_on_timeout BOOLEAN DEFAULT TRUE,\n    alert_on_error BOOLEAN DEFAULT TRUE,\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE CASCADE,\n    UNIQUE KEY unique_url_group (url_id, group_id)\n);"
-      },
-      "id": "setup-url-groups-table",
-      "name": "Create URL Alert Groups Table",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        460,
-        800
-      ],
-      "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
-        }
-      }
-    },
       "parameters": {},
       "id": "setup-trigger-001",
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [
-        240,
-        300
-      ]
+      "position": [240, 400]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Create configuration table for global settings\nCREATE TABLE IF NOT EXISTS config (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    config_key VARCHAR(50) UNIQUE NOT NULL,\n    config_value VARCHAR(255) NOT NULL,\n    description TEXT,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);"
+        "query": "CREATE TABLE IF NOT EXISTS config (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    config_key VARCHAR(50) UNIQUE NOT NULL,\n    config_value VARCHAR(255) NOT NULL,\n    description TEXT,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+        "options": {}
       },
-      "id": "setup-config-table",
+      "id": "create-config-table",
       "name": "Create Config Table",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        460,
-        200
-      ],
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 200],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Create URLs monitoring table\nCREATE TABLE IF NOT EXISTS monitored_urls (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url VARCHAR(500) NOT NULL,\n    name VARCHAR(100) NOT NULL,\n    description TEXT,\n    expected_response TEXT,\n    expected_response_chars INT DEFAULT 200,\n    http_method ENUM('GET', 'POST', 'PUT', 'DELETE', 'HEAD') DEFAULT 'GET',\n    timeout_seconds INT DEFAULT 30,\n    check_interval_minutes INT DEFAULT 5,\n    priority ENUM('critical', 'high', 'normal', 'low') DEFAULT 'normal',\n    contact_person VARCHAR(100),\n    contact_email VARCHAR(255),\n    team_name VARCHAR(100),\n    failure_threshold INT DEFAULT 5,\n    current_failure_count INT DEFAULT 0,\n    last_checked_at TIMESTAMP NULL,\n    last_status ENUM('up', 'down', 'timeout', 'error', 'unknown') DEFAULT 'unknown',\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);"
+        "query": "CREATE TABLE IF NOT EXISTS monitored_urls (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url VARCHAR(500) NOT NULL,\n    name VARCHAR(100) NOT NULL,\n    description TEXT,\n    expected_response TEXT,\n    expected_response_chars INT DEFAULT 200,\n    http_method ENUM('GET', 'POST', 'PUT', 'DELETE', 'HEAD') DEFAULT 'GET',\n    timeout_seconds INT DEFAULT 30,\n    check_interval_minutes INT DEFAULT 5,\n    priority ENUM('critical', 'high', 'normal', 'low') DEFAULT 'normal',\n    contact_person VARCHAR(100),\n    contact_email VARCHAR(255),\n    team_name VARCHAR(100),\n    failure_threshold INT DEFAULT 5,\n    current_failure_count INT DEFAULT 0,\n    last_checked_at TIMESTAMP NULL,\n    last_status ENUM('up', 'down', 'timeout', 'error', 'unknown') DEFAULT 'unknown',\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+        "options": {}
       },
-      "id": "setup-urls-table",
+      "id": "create-urls-table",
       "name": "Create URLs Table",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        460,
-        320
-      ],
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 300],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Create health reports table\nCREATE TABLE IF NOT EXISTS health_reports (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    status ENUM('up', 'down', 'timeout', 'error') NOT NULL,\n    response_time_ms INT,\n    http_status_code INT,\n    response_body_preview TEXT,\n    response_headers JSON,\n    error_message TEXT,\n    retry_attempt INT DEFAULT 1,\n    checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE\n);"
+        "query": "CREATE TABLE IF NOT EXISTS health_reports (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    status ENUM('up', 'down', 'timeout', 'error') NOT NULL,\n    response_time_ms INT,\n    http_status_code INT,\n    response_body_preview TEXT,\n    response_headers JSON,\n    error_message TEXT,\n    retry_attempt INT DEFAULT 1,\n    checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE\n);",
+        "options": {}
       },
-      "id": "setup-reports-table",
+      "id": "create-reports-table",
       "name": "Create Reports Table",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        460,
-        440
-      ],
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 400],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Create alert groups table\nCREATE TABLE IF NOT EXISTS alert_groups (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    group_name VARCHAR(100) UNIQUE NOT NULL,\n    description TEXT,\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);"
+        "query": "CREATE TABLE IF NOT EXISTS alert_groups (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    group_name VARCHAR(100) UNIQUE NOT NULL,\n    description TEXT,\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+        "options": {}
       },
-      "id": "setup-notifications-table",
+      "id": "create-alert-groups-table",
       "name": "Create Alert Groups Table",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        460,
-        560
-      ],
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 500],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Create alert history table\nCREATE TABLE IF NOT EXISTS alert_history (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    notification_type ENUM('email', 'sms', 'telegram', 'webhook') NOT NULL,\n    destination VARCHAR(255) NOT NULL,\n    alert_type ENUM('down', 'up', 'timeout', 'error') NOT NULL,\n    message TEXT,\n    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    success BOOLEAN DEFAULT TRUE,\n    error_details TEXT,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE\n);"
+        "query": "CREATE TABLE IF NOT EXISTS alert_group_members (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    group_id INT NOT NULL,\n    notification_type ENUM('email', 'sms', 'telegram', 'webhook') NOT NULL,\n    destination VARCHAR(255) NOT NULL,\n    member_name VARCHAR(100),\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE CASCADE\n);",
+        "options": {}
       },
-      "id": "setup-alerts-table",
+      "id": "create-group-members-table",
+      "name": "Create Group Members Table",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 600],
+      "credentials": {
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS url_alert_groups (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    group_id INT NOT NULL,\n    alert_on_down BOOLEAN DEFAULT TRUE,\n    alert_on_up BOOLEAN DEFAULT TRUE,\n    alert_on_timeout BOOLEAN DEFAULT TRUE,\n    alert_on_error BOOLEAN DEFAULT TRUE,\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE CASCADE,\n    UNIQUE KEY unique_url_group (url_id, group_id)\n);",
+        "options": {}
+      },
+      "id": "create-url-groups-table",
+      "name": "Create URL Groups Table",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 700],
+      "credentials": {
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS alert_history (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    group_id INT,\n    notification_type ENUM('email', 'sms', 'telegram', 'webhook') NOT NULL,\n    destination VARCHAR(255) NOT NULL,\n    alert_type ENUM('down', 'up', 'timeout', 'error') NOT NULL,\n    message TEXT,\n    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    success BOOLEAN DEFAULT TRUE,\n    error_details TEXT,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE SET NULL\n);",
+        "options": {}
+      },
+      "id": "create-alerts-table",
       "name": "Create Alerts Table",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        460,
-        680
-      ],
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 800],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Create indexes for better performance\nCREATE INDEX IF NOT EXISTS idx_url_checked ON health_reports(url_id, checked_at);\nCREATE INDEX IF NOT EXISTS idx_checked_at ON health_reports(checked_at);\nCREATE INDEX IF NOT EXISTS idx_status_time ON health_reports(status, checked_at);\nCREATE INDEX IF NOT EXISTS idx_active_lastcheck ON monitored_urls(is_active, last_checked_at);\nCREATE INDEX IF NOT EXISTS idx_priority ON monitored_urls(priority);\nCREATE INDEX IF NOT EXISTS idx_next_check ON monitored_urls(check_interval_minutes, last_checked_at);\nCREATE INDEX IF NOT EXISTS idx_group_type ON alert_group_members(group_id, notification_type);\nCREATE INDEX IF NOT EXISTS idx_group_active ON alert_group_members(group_id, is_active);\nCREATE INDEX IF NOT EXISTS idx_url_alerts ON url_alert_groups(url_id, is_active);\nCREATE INDEX IF NOT EXISTS idx_group_urls ON url_alert_groups(group_id, is_active);\nCREATE INDEX IF NOT EXISTS idx_url_sent ON alert_history(url_id, sent_at);\nCREATE INDEX IF NOT EXISTS idx_group_sent ON alert_history(group_id, sent_at);\nCREATE INDEX IF NOT EXISTS idx_sent_at ON alert_history(sent_at);"
+        "query": "INSERT IGNORE INTO config (config_key, config_value, description) VALUES\n('default_timeout', '30', 'Default timeout in seconds for HTTP requests'),\n('default_check_interval', '5', 'Default check interval in minutes'),\n('default_failure_threshold', '5', 'Default number of failures before sending alert'),\n('data_retention_days', '30', 'Number of days to keep health report data'),\n('retry_delay_seconds', '30', 'Seconds to wait before retry'),\n('max_response_preview_chars', '200', 'Maximum characters to store from response body'),\n('notification_cooldown_minutes', '60', 'Minutes to wait between same type notifications for same URL'),\n('batch_size', '10', 'Number of URLs to process in each batch'),\n('max_concurrent_checks', '5', 'Maximum concurrent health checks'),\n('alert_email_from', 'healthcheck@yourcompany.com', 'Default from email for alerts');",
+        "options": {}
       },
-      "id": "setup-indexes",
-      "name": "Create Indexes",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        680,
-        200
-      ],
-      "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Insert default configuration values\nINSERT IGNORE INTO config (config_key, config_value, description) VALUES\n('default_timeout', '30', 'Default timeout in seconds for HTTP requests'),\n('default_check_interval', '5', 'Default check interval in minutes'),\n('default_failure_threshold', '5', 'Default number of failures before sending alert'),\n('data_retention_days', '30', 'Number of days to keep health report data'),\n('retry_delay_seconds', '30', 'Seconds to wait before retry'),\n('max_response_preview_chars', '200', 'Maximum characters to store from response body'),\n('notification_cooldown_minutes', '60', 'Minutes to wait between same type notifications for same URL'),\n('batch_size', '10', 'Number of URLs to process in each batch'),\n('max_concurrent_checks', '5', 'Maximum concurrent health checks'),\n('alert_email_from', 'healthcheck@yourcompany.com', 'Default from email for alerts');"
-      },
-      "id": "setup-config-data",
+      "id": "insert-config-data",
       "name": "Insert Config Data",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        680,
-        320
-      ],
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 200],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Create cleanup procedure\nDROP PROCEDURE IF EXISTS CleanOldHealthReports;\nCREATE PROCEDURE CleanOldHealthReports()\nBEGIN\n    DECLARE retention_days INT DEFAULT 30;\n    DECLARE deleted_reports INT DEFAULT 0;\n    DECLARE deleted_alerts INT DEFAULT 0;\n    \n    -- Get retention period from config\n    SELECT CAST(config_value AS UNSIGNED) INTO retention_days \n    FROM config WHERE config_key = 'data_retention_days';\n    \n    -- Delete old health reports\n    DELETE FROM health_reports \n    WHERE checked_at < DATE_SUB(NOW(), INTERVAL retention_days DAY);\n    SET deleted_reports = ROW_COUNT();\n    \n    -- Delete old alert history\n    DELETE FROM alert_history \n    WHERE sent_at < DATE_SUB(NOW(), INTERVAL retention_days DAY);\n    SET deleted_alerts = ROW_COUNT();\n    \n    -- Return summary\n    SELECT \n        deleted_reports as deleted_health_reports,\n        deleted_alerts as deleted_alert_history,\n        retention_days as retention_period_days,\n        NOW() as cleanup_completed_at;\nEND;"
+        "query": "INSERT IGNORE INTO monitored_urls (id, url, name, description, priority, contact_person, contact_email, check_interval_minutes) VALUES\n(1, 'https://www.google.com', 'Google Search', 'Main Google search page - always available', 'critical', 'System Admin', 'admin@yourcompany.com', 2),\n(2, 'https://httpstat.us/200', 'HTTP Test - Success', 'Test endpoint that returns HTTP 200', 'normal', 'DevOps Team', 'devops@yourcompany.com', 5),\n(3, 'https://httpstat.us/500', 'HTTP Test - Error', 'Test endpoint that returns HTTP 500 (for testing alerts)', 'low', 'DevOps Team', 'devops@yourcompany.com', 5),\n(4, 'https://www.github.com', 'GitHub', 'GitHub main website', 'high', 'Development Team', 'dev@yourcompany.com', 3);",
+        "options": {}
       },
-      "id": "setup-procedures",
-      "name": "Create Procedures",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        680,
-        440
-      ],
-      "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Create status summary view\nCREATE OR REPLACE VIEW url_status_summary AS\nSELECT \n    u.id,\n    u.name,\n    u.url,\n    u.priority,\n    u.last_status,\n    u.last_checked_at,\n    u.current_failure_count,\n    u.failure_threshold,\n    u.check_interval_minutes,\n    u.contact_person,\n    u.contact_email,\n    CASE \n        WHEN u.last_checked_at IS NULL THEN 'Never checked'\n        WHEN u.last_checked_at < DATE_SUB(NOW(), INTERVAL (u.check_interval_minutes + 2) MINUTE) THEN 'Overdue'\n        ELSE 'On schedule'\n    END as check_status,\n    (\n        SELECT AVG(response_time_ms) \n        FROM health_reports hr \n        WHERE hr.url_id = u.id \n          AND hr.checked_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)\n          AND hr.status = 'up'\n    ) as avg_response_24h,\n    (\n        SELECT COUNT(*) \n        FROM health_reports hr \n        WHERE hr.url_id = u.id \n          AND hr.checked_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)\n    ) as checks_last_24h,\n    (\n        SELECT COUNT(*) \n        FROM health_reports hr \n        WHERE hr.url_id = u.id \n          AND hr.checked_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)\n          AND hr.status = 'up'\n    ) as successful_checks_24h\nFROM monitored_urls u\nWHERE u.is_active = TRUE\nORDER BY \n    FIELD(u.priority, 'critical', 'high', 'normal', 'low'),\n    u.name;"
-      },
-      "id": "setup-views",
-      "name": "Create Views",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        680,
-        560
-      ],
-      "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Insert sample URLs for testing\nINSERT IGNORE INTO monitored_urls (id, url, name, description, priority, contact_person, contact_email, check_interval_minutes) VALUES\n(1, 'https://www.google.com', 'Google Search', 'Main Google search page - always available', 'critical', 'System Admin', 'admin@yourcompany.com', 2),\n(2, 'https://httpstat.us/200', 'HTTP Test - Success', 'Test endpoint that returns HTTP 200', 'normal', 'DevOps Team', 'devops@yourcompany.com', 5),\n(3, 'https://httpstat.us/500', 'HTTP Test - Error', 'Test endpoint that returns HTTP 500 (for testing alerts)', 'low', 'DevOps Team', 'devops@yourcompany.com', 5),\n(4, 'https://www.github.com', 'GitHub', 'GitHub main website', 'high', 'Development Team', 'dev@yourcompany.com', 3);"
-      },
-      "id": "setup-sample-urls",
+      "id": "insert-sample-urls",
       "name": "Insert Sample URLs",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        680,
-        680
-      ],
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 300],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Insert sample alert groups and members\nINSERT IGNORE INTO alert_groups (group_name, description) VALUES\n('critical-ops', 'Critical operations team - 24/7 monitoring'),\n('dev-team', 'Development team alerts'),\n('business-hours', 'Business hours support team'),\n('executives', 'Executive level alerts for critical issues');\n\n-- Insert sample alert group members\nINSERT IGNORE INTO alert_group_members (group_id, notification_type, destination, member_name) VALUES\n-- Critical Ops Team\n(1, 'email', 'ops-critical@yourcompany.com', 'Critical Ops Team'),\n(1, 'sms', '1234567890@vztext.com', 'Ops Manager Mobile'),\n(1, 'email', 'oncall@yourcompany.com', 'On-Call Engineer'),\n-- Dev Team  \n(2, 'email', 'dev-team@yourcompany.com', 'Development Team'),\n(2, 'email', 'devops@yourcompany.com', 'DevOps Team'),\n-- Business Hours\n(3, 'email', 'support@yourcompany.com', 'Support Team'),\n(3, 'email', 'help-desk@yourcompany.com', 'Help Desk'),\n-- Executives\n(4, 'email', 'cto@yourcompany.com', 'Chief Technology Officer'),\n(4, 'email', 'admin@yourcompany.com', 'System Administrator');"
+        "query": "INSERT IGNORE INTO alert_groups (group_name, description) VALUES\n('critical-ops', 'Critical operations team - 24/7 monitoring'),\n('dev-team', 'Development team alerts'),\n('business-hours', 'Business hours support team'),\n('executives', 'Executive level alerts for critical issues');",
+        "options": {}
       },
-      "id": "setup-sample-notifications",
-      "name": "Insert Sample Alert Groups",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        900,
-        200
-      ],
+      "id": "insert-alert-groups",
+      "name": "Insert Alert Groups",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 400],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Verify setup by showing table information\nSELECT \n    'Setup Complete!' as status,\n    (\n        SELECT COUNT(*) FROM information_schema.tables \n        WHERE table_schema = DATABASE() \n        AND table_name IN ('config', 'monitored_urls', 'health_reports', 'notification_settings', 'alert_history')\n    ) as tables_created,\n    (\n        SELECT COUNT(*) FROM config\n    ) as config_entries,\n    (\n        SELECT COUNT(*) FROM monitored_urls\n    ) as sample_urls,\n    (\n        SELECT COUNT(*) FROM notification_settings\n    ) as notification_settings,\n    NOW() as setup_completed_at;"
+        "query": "INSERT IGNORE INTO alert_group_members (group_id, notification_type, destination, member_name) VALUES\n(1, 'email', 'ops-critical@yourcompany.com', 'Critical Ops Team'),\n(1, 'sms', '1234567890@vztext.com', 'Ops Manager Mobile'),\n(1, 'email', 'oncall@yourcompany.com', 'On-Call Engineer'),\n(2, 'email', 'dev-team@yourcompany.com', 'Development Team'),\n(2, 'email', 'devops@yourcompany.com', 'DevOps Team'),\n(3, 'email', 'support@yourcompany.com', 'Support Team'),\n(3, 'email', 'help-desk@yourcompany.com', 'Help Desk'),\n(4, 'email', 'cto@yourcompany.com', 'Chief Technology Officer'),\n(4, 'email', 'admin@yourcompany.com', 'System Administrator');",
+        "options": {}
       },
-      "id": "setup-verification",
+      "id": "insert-group-members",
+      "name": "Insert Group Members",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 500],
+      "credentials": {
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT IGNORE INTO url_alert_groups (url_id, group_id, alert_on_down, alert_on_up, alert_on_timeout, alert_on_error) VALUES\n(1, 1, TRUE, TRUE, TRUE, TRUE),\n(1, 4, TRUE, FALSE, TRUE, TRUE),\n(2, 2, TRUE, TRUE, TRUE, TRUE),\n(3, 2, TRUE, TRUE, TRUE, TRUE),\n(4, 2, TRUE, TRUE, TRUE, TRUE),\n(4, 3, TRUE, FALSE, FALSE, FALSE);",
+        "options": {}
+      },
+      "id": "link-urls-to-groups",
+      "name": "Link URLs to Groups",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 600],
+      "credentials": {
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    'Setup Complete!' as status,\n    (\n        SELECT COUNT(*) FROM information_schema.tables \n        WHERE table_schema = DATABASE() \n        AND table_name IN ('config', 'monitored_urls', 'health_reports', 'alert_groups', 'alert_group_members', 'url_alert_groups', 'alert_history')\n    ) as tables_created,\n    (\n        SELECT COUNT(*) FROM config\n    ) as config_entries,\n    (\n        SELECT COUNT(*) FROM monitored_urls\n    ) as sample_urls,\n    (\n        SELECT COUNT(*) FROM alert_groups\n    ) as alert_groups,\n    (\n        SELECT COUNT(*) FROM alert_group_members\n    ) as alert_members,\n    (\n        SELECT COUNT(*) FROM url_alert_groups\n    ) as url_group_links,\n    NOW() as setup_completed_at;",
+        "options": {}
+      },
+      "id": "verify-setup",
       "name": "Verify Setup",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2,
-      "position": [
-        900,
-        320
-      ],
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1100, 400],
       "credentials": {
-        "mysql": {
-          "id": "mysql_healthcheck_db",
-          "name": "MySQL Health Check DB"
+        "mySql": {
+          "id": "KRPFHorENpUr4LJ8",
+          "name": "MySQL n8n_url_healthcheck"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Display setup completion summary\nconst setupResult = $input.first().json;\n\nconsole.log('=== HEALTH CHECK DATABASE SETUP COMPLETE ===');\nconsole.log(`Tables Created: ${setupResult.tables_created}/5`);\nconsole.log(`Config Entries: ${setupResult.config_entries}`);\nconsole.log(`Sample URLs: ${setupResult.sample_urls}`);\nconsole.log(`Notification Settings: ${setupResult.notification_settings}`);\nconsole.log(`Setup Completed: ${setupResult.setup_completed_at}`);\nconsole.log('');\nconsole.log('Next Steps:');\nconsole.log('1. Update sample notification emails in notification_settings table');\nconsole.log('2. Configure SMTP credentials in n8n for email alerts');\nconsole.log('3. Activate the \"Website Health Check Monitor\" workflow');\nconsole.log('4. Monitor the execution logs for health check results');\nconsole.log('');\nconsole.log('Sample queries to get started:');\nconsole.log('- View status: SELECT * FROM url_status_summary;');\nconsole.log('- Add URL: INSERT INTO monitored_urls (url, name, priority) VALUES (\"https://example.com\", \"My Site\", \"normal\");');\nconsole.log('- View reports: SELECT * FROM health_reports ORDER BY checked_at DESC LIMIT 10;');\n\nreturn {\n  json: {\n    status: 'Database setup completed successfully',\n    summary: setupResult,\n    next_steps: [\n      'Update notification emails',\n      'Configure SMTP credentials',\n      'Activate main workflow',\n      'Monitor execution logs'\n    ]\n  }\n};"
+        "jsCode": "const result = $input.first().json;\n\nconsole.log('=== HEALTH CHECK DATABASE SETUP COMPLETE ===');\nconsole.log(`Status: ${result.status}`);\nconsole.log(`Tables Created: ${result.tables_created}/7`);\nconsole.log(`Config Entries: ${result.config_entries}`);\nconsole.log(`Sample URLs: ${result.sample_urls}`);\nconsole.log(`Alert Groups: ${result.alert_groups}`);\nconsole.log(`Alert Members: ${result.alert_members}`);\nconsole.log(`URL-Group Links: ${result.url_group_links}`);\nconsole.log(`Setup Completed: ${result.setup_completed_at}`);\nconsole.log('');\nconsole.log('SUCCESS! Database is ready for health monitoring.');\nconsole.log('');\nconsole.log('Next Steps:');\nconsole.log('1. Update alert group member emails with real addresses');\nconsole.log('2. Add your own URLs to monitor');\nconsole.log('3. Configure SMTP credentials for email alerts');\nconsole.log('4. Import and activate the main monitoring workflow');\n\nreturn {\n  json: {\n    setup_status: 'SUCCESS',\n    tables_created: result.tables_created,\n    total_records: result.config_entries + result.sample_urls + result.alert_groups + result.alert_members + result.url_group_links,\n    setup_time: result.setup_completed_at\n  }\n};"
       },
       "id": "setup-summary",
       "name": "Setup Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        900,
-        440
-      ]
+      "position": [1100, 600]
     }
   ],
   "connections": {
@@ -332,36 +262,6 @@
             "node": "Create Config Table",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Create URLs Table",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Create Reports Table",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Create Alert Groups Table",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Create Alert Group Members Table",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Create URL Alert Groups Table",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Create Alerts Table",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -370,7 +270,7 @@
       "main": [
         [
           {
-            "node": "Create Indexes",
+            "node": "Create URLs Table",
             "type": "main",
             "index": 0
           }
@@ -381,7 +281,7 @@
       "main": [
         [
           {
-            "node": "Create Indexes",
+            "node": "Create Reports Table",
             "type": "main",
             "index": 0
           }
@@ -392,7 +292,7 @@
       "main": [
         [
           {
-            "node": "Create Indexes",
+            "node": "Create Alert Groups Table",
             "type": "main",
             "index": 0
           }
@@ -403,29 +303,29 @@
       "main": [
         [
           {
-            "node": "Create Indexes",
+            "node": "Create Group Members Table",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create Alert Group Members Table": {
+    "Create Group Members Table": {
       "main": [
         [
           {
-            "node": "Create Indexes",
+            "node": "Create URL Groups Table",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create URL Alert Groups Table": {
+    "Create URL Groups Table": {
       "main": [
         [
           {
-            "node": "Create Indexes",
+            "node": "Create Alerts Table",
             "type": "main",
             "index": 0
           }
@@ -433,17 +333,6 @@
       ]
     },
     "Create Alerts Table": {
-      "main": [
-        [
-          {
-            "node": "Create Indexes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Indexes": {
       "main": [
         [
           {
@@ -458,28 +347,6 @@
       "main": [
         [
           {
-            "node": "Create Procedures",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Procedures": {
-      "main": [
-        [
-          {
-            "node": "Create Views",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Views": {
-      "main": [
-        [
-          {
             "node": "Insert Sample URLs",
             "type": "main",
             "index": 0
@@ -491,25 +358,36 @@
       "main": [
         [
           {
-            "node": "Insert Sample Alert Groups",
+            "node": "Insert Alert Groups",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Sample Alert Groups": {
+    "Insert Alert Groups": {
       "main": [
         [
           {
-            "node": "Link URLs to Alert Groups",
+            "node": "Insert Group Members",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Link URLs to Alert Groups": {
+    "Insert Group Members": {
+      "main": [
+        [
+          {
+            "node": "Link URLs to Groups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link URLs to Groups": {
       "main": [
         [
           {
@@ -532,20 +410,13 @@
       ]
     }
   },
-  "pinData": {},
+  "active": false,
   "settings": {
     "executionOrder": "v1"
   },
   "staticData": null,
-  "tags": [
-    {
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z",
-      "id": "setup",
-      "name": "setup"
-    }
-  ],
+  "tags": [],
   "triggerCount": 1,
   "updatedAt": "2024-01-01T00:00:00.000Z",
-  "versionId": "setup-12345678-1234-1234-1234-123456789012"
+  "versionId": "setup-sequential-v1"
 }

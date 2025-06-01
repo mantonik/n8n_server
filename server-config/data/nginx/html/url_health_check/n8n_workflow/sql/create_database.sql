@@ -1,5 +1,8 @@
 -- Database: n8n_url_healthcheck
 
+CREATE DATABASE n8n_url_healthcheck
+    DEFAULT CHARACTER SET = 'utf8mb4';
+
 -- Configuration table for global settings
 CREATE TABLE config (
     id INT PRIMARY KEY AUTO_INCREMENT,
