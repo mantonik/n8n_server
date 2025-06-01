@@ -1,0 +1,559 @@
+{
+  "name": "Website Health Check Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "* * * * *"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Every Minute Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, url, name, expected_response, timeout_seconds, \n       failure_threshold, current_failure_count, priority,\n       check_interval_minutes, expected_response_chars,\n       http_method\nFROM monitored_urls \nWHERE is_active = TRUE \n  AND (\n    last_checked_at IS NULL OR \n    last_checked_at <= DATE_SUB(NOW(), INTERVAL check_interval_minutes MINUTE)\n  )\nORDER BY FIELD(priority, 'critical', 'high', 'normal', 'low'), last_checked_at ASC\nLIMIT 20"
+      },
+      "id": "b2c3d4e5-f6g7-8901-bcde-f23456789012",
+      "name": "Get URLs to Check",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "id": "c3d4e5f6-g7h8-9012-cdef-345678901234",
+      "name": "Split in Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract URL data for processing\nfor (const item of $input.all()) {\n  const urlData = item.json;\n  \n  // Prepare data for HTTP request\n  item.json = {\n    url_id: urlData.id,\n    url: urlData.url,\n    name: urlData.name,\n    expected_response: urlData.expected_response,\n    timeout: (urlData.timeout_seconds || 30) * 1000, // Convert to milliseconds\n    failure_threshold: urlData.failure_threshold || 5,\n    current_failures: urlData.current_failure_count || 0,\n    priority: urlData.priority || 'normal',\n    expected_chars: urlData.expected_response_chars || 200,\n    http_method: urlData.http_method || 'GET',\n    check_start_time: Date.now()\n  };\n}\n\nreturn $input.all();"
+      },
+      "id": "d4e5f6g7-h8i9-0123-defg-456789012345",
+      "name": "Prepare URL Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.http_method }}",
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": "={{ $json.timeout }}",
+          "followRedirect": true,
+          "fullResponse": true,
+          "ignoreHttpStatusErrors": true
+        }
+      },
+      "id": "e5f6g7h8-i9j0-1234-efgh-567890123456",
+      "name": "HTTP Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1120,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process HTTP response and determine health status\nconst items = [];\n\nfor (let i = 0; i < $input.all().length; i++) {\n  const inputItem = $input.all()[i];\n  const urlData = $('Prepare URL Data').all()[i].json;\n  \n  let status = 'error';\n  let errorMessage = null;\n  let responseTime = null;\n  let httpStatusCode = null;\n  let responsePreview = null;\n  let responseHeaders = null;\n  \n  try {\n    if (inputItem.json && !inputItem.error) {\n      // Successful HTTP request\n      const response = inputItem.json;\n      httpStatusCode = response.statusCode || 0;\n      responseTime = Date.now() - urlData.check_start_time;\n      responseHeaders = response.headers || {};\n      \n      // Check if status code is 200\n      if (httpStatusCode === 200) {\n        status = 'up';\n        \n        // Get response preview\n        const responseBody = response.body || '';\n        responsePreview = responseBody.substring(0, urlData.expected_chars);\n        \n        // Check expected response if defined\n        if (urlData.expected_response && urlData.expected_response.trim() !== '') {\n          if (!responseBody.includes(urlData.expected_response)) {\n            status = 'error';\n            errorMessage = `Expected response '${urlData.expected_response}' not found`;\n          }\n        }\n      } else {\n        status = 'down';\n        errorMessage = `HTTP ${httpStatusCode}`;\n        responsePreview = (response.body || '').substring(0, urlData.expected_chars);\n      }\n    } else {\n      // Error in request\n      status = 'error';\n      errorMessage = inputItem.error?.message || 'HTTP request failed';\n      responseTime = Date.now() - urlData.check_start_time;\n    }\n  } catch (error) {\n    status = 'error';\n    errorMessage = error.message || 'Unknown processing error';\n    responseTime = Date.now() - urlData.check_start_time;\n  }\n  \n  // Calculate new failure count\n  const newFailureCount = status === 'up' ? 0 : urlData.current_failures + 1;\n  const shouldAlert = newFailureCount >= urlData.failure_threshold && status !== 'up' && urlData.current_failures < urlData.failure_threshold;\n  \n  items.push({\n    json: {\n      url_id: urlData.url_id,\n      url: urlData.url,\n      name: urlData.name,\n      status: status,\n      response_time_ms: responseTime,\n      http_status_code: httpStatusCode,\n      response_body_preview: responsePreview,\n      response_headers: JSON.stringify(responseHeaders),\n      error_message: errorMessage,\n      current_failures: urlData.current_failures,\n      new_failure_count: newFailureCount,\n      failure_threshold: urlData.failure_threshold,\n      priority: urlData.priority,\n      should_alert: shouldAlert,\n      checked_at: new Date().toISOString().slice(0, 19).replace('T', ' ')\n    }\n  });\n}\n\nreturn items;"
+      },
+      "id": "f6g7h8i9-j0k1-2345-fghi-678901234567",
+      "name": "Process Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "health_reports",
+        "columns": "url_id, status, response_time_ms, http_status_code, response_body_preview, response_headers, error_message, checked_at",
+        "values": "={{ $json.url_id }}, '{{ $json.status }}', {{ $json.response_time_ms || 'NULL' }}, {{ $json.http_status_code || 'NULL' }}, {{ $json.response_body_preview ? \"'\" + $json.response_body_preview.replace(/'/g, \"''\") + \"'\" : 'NULL' }}, {{ $json.response_headers ? \"'\" + $json.response_headers.replace(/'/g, \"''\") + \"'\" : 'NULL' }}, {{ $json.error_message ? \"'\" + $json.error_message.replace(/'/g, \"''\") + \"'\" : 'NULL' }}, '{{ $json.checked_at }}'"
+      },
+      "id": "g7h8i9j0-k1l2-3456-ghij-789012345678",
+      "name": "Save Health Report",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        300
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE monitored_urls \nSET \n  last_checked_at = NOW(),\n  last_status = '{{ $json.status }}',\n  current_failure_count = {{ $json.new_failure_count }},\n  updated_at = NOW()\nWHERE id = {{ $json.url_id }}"
+      },
+      "id": "h8i9j0k1-l2m3-4567-hijk-890123456789",
+      "name": "Update URL Status",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        300
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "alert_condition",
+              "leftValue": "={{ $json.should_alert }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "i9j0k1l2-m3n4-5678-ijkl-901234567890",
+      "name": "Should Send Alert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    agm.notification_type, \n    agm.destination, \n    agm.member_name,\n    ag.group_name,\n    ag.id as group_id,\n    uag.alert_on_down,\n    uag.alert_on_up,\n    uag.alert_on_timeout,\n    uag.alert_on_error\nFROM url_alert_groups uag\nJOIN alert_groups ag ON uag.group_id = ag.id\nJOIN alert_group_members agm ON ag.id = agm.group_id\nWHERE uag.url_id = {{ $json.url_id }} \n  AND uag.is_active = TRUE\n  AND ag.is_active = TRUE\n  AND agm.is_active = TRUE\n  AND (\n    ('{{ $json.status }}' = 'down' AND uag.alert_on_down = TRUE) OR\n    ('{{ $json.status }}' = 'up' AND uag.alert_on_up = TRUE) OR  \n    ('{{ $json.status }}' = 'timeout' AND uag.alert_on_timeout = TRUE) OR\n    ('{{ $json.status }}' = 'error' AND uag.alert_on_error = TRUE)\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM alert_history ah \n    WHERE ah.url_id = uag.url_id \n      AND ah.group_id = ag.id\n      AND ah.notification_type = agm.notification_type\n      AND ah.destination = agm.destination\n      AND ah.sent_at > DATE_SUB(NOW(), INTERVAL 60 MINUTE)\n  )"
+      },
+      "id": "j0k1l2m3-n4o5-6789-jklm-012345678901",
+      "name": "Get Alert Recipients",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        200
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare alert messages for different notification types with group context\nconst items = [];\nconst alertData = $('Update URL Status').first().json;\n\nfor (const recipient of $input.all()) {\n  const recipientData = recipient.json;\n  \n  // Create alert message based on notification type\n  let alertMessage = '';\n  let subject = '';\n  \n  const recipientName = recipientData.member_name || recipientData.destination;\n  const groupName = recipientData.group_name;\n  \n  if (recipientData.notification_type === 'email' || recipientData.notification_type === 'sms') {\n    subject = `🚨 ${alertData.priority.toUpperCase()} Alert: ${alertData.name} [${groupName}]`;\n    alertMessage = `Website Health Alert\\n\\n` +\n                  `🚨 Status: ${alertData.status.toUpperCase()}\\n` +\n                  `📍 Site: ${alertData.name}\\n` +\n                  `🔗 URL: ${alertData.url}\\n` +\n                  `⚠️ Priority: ${alertData.priority.toUpperCase()}\\n` +\n                  `👥 Alert Group: ${groupName}\\n` +\n                  `👤 Recipient: ${recipientName}\\n` +\n                  `❌ Error: ${alertData.error_message || 'Unknown error'}\\n` +\n                  `📊 Response Time: ${alertData.response_time_ms || 'N/A'}ms\\n` +\n                  `🔄 Consecutive Failures: ${alertData.new_failure_count}/${alertData.failure_threshold}\\n` +\n                  `🕐 Time: ${new Date().toLocaleString()}\\n\\n` +\n                  `Please check the website immediately.\\n\\n` +\n                  `This alert was sent to the '${groupName}' alert group.`;\n  } else if (recipientData.notification_type === 'telegram') {\n    alertMessage = `🚨 *${alertData.priority.toUpperCase()} ALERT* [${groupName}]\\n\\n` +\n                  `❌ *${alertData.name}* is DOWN\\n` +\n                  `🔗 ${alertData.url}\\n\\n` +\n                  `Error: ${alertData.error_message || 'Unknown'}\\n` +\n                  `Failures: ${alertData.new_failure_count}/${alertData.failure_threshold}\\n` +\n                  `Time: ${new Date().toLocaleString()}\\n` +\n                  `Group: ${groupName}`;\n  }\n  \n  items.push({\n    json: {\n      ...alertData,\n      notification_type: recipientData.notification_type,\n      destination: recipientData.destination,\n      member_name: recipientName,\n      group_name: groupName,\n      group_id: recipientData.group_id,\n      alert_message: alertMessage,\n      alert_subject: subject\n    }\n  });\n}\n\nreturn items;"  let subject = '';\n  \n  if (recipientData.notification_type === 'email' || recipientData.notification_type === 'sms') {\n    subject = `🚨 ${alertData.priority.toUpperCase()} Alert: ${alertData.name}`;\n    alertMessage = `Website Health Alert\\n\\n` +\n                  `🚨 Status: ${alertData.status.toUpperCase()}\\n` +\n                  `📍 Site: ${alertData.name}\\n` +\n                  `🔗 URL: ${alertData.url}\\n` +\n                  `⚠️ Priority: ${alertData.priority.toUpperCase()}\\n` +\n                  `❌ Error: ${alertData.error_message || 'Unknown error'}\\n` +\n                  `📊 Response Time: ${alertData.response_time_ms || 'N/A'}ms\\n` +\n                  `🔄 Consecutive Failures: ${alertData.new_failure_count}/${alertData.failure_threshold}\\n` +\n                  `🕐 Time: ${new Date().toLocaleString()}\\n\\n` +\n                  `Please check the website immediately.`;\n  } else if (recipientData.notification_type === 'telegram') {\n    alertMessage = `🚨 *${alertData.priority.toUpperCase()} ALERT*\\n\\n` +\n                  `❌ *${alertData.name}* is DOWN\\n` +\n                  `🔗 ${alertData.url}\\n\\n` +\n                  `Error: ${alertData.error_message || 'Unknown'}\\n` +\n                  `Failures: ${alertData.new_failure_count}/${alertData.failure_threshold}\\n` +\n                  `Time: ${new Date().toLocaleString()}`;\n  }\n  \n  items.push({\n    json: {\n      ...alertData,\n      notification_type: recipientData.notification_type,\n      destination: recipientData.destination,\n      alert_message: alertMessage,\n      alert_subject: subject\n    }\n  });\n}\n\nreturn items;"
+      },
+      "id": "k1l2m3n4-o5p6-7890-klmn-123456789012",
+      "name": "Prepare Alert Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email_condition",
+              "leftValue": "={{ $json.notification_type }}",
+              "rightValue": "email",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "l2m3n4o5-p6q7-8901-lmno-234567890123",
+      "name": "Is Email Alert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "healthcheck@yourcompany.com",
+        "toEmail": "={{ $json.destination }}",
+        "subject": "={{ $json.alert_subject }}",
+        "text": "={{ $json.alert_message }}",
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "m3n4o5p6-q7r8-9012-mnop-345678901234",
+      "name": "Send Email Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        100
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_healthcheck",
+          "name": "Health Check SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "sms_condition",
+              "leftValue": "={{ $json.notification_type }}",
+              "rightValue": "sms",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n4o5p6q7-r8s9-0123-nopq-456789012345",
+      "name": "Is SMS Alert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "healthcheck@yourcompany.com",
+        "toEmail": "={{ $json.destination }}",
+        "subject": "Health Alert",
+        "text": "={{ $json.alert_message }}",
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "o5p6q7r8-s9t0-1234-opqr-567890123456",
+      "name": "Send SMS Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_healthcheck",
+          "name": "Health Check SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "alert_history",
+        "columns": "url_id, group_id, notification_type, destination, alert_type, message, sent_at, success",
+        "values": "={{ $json.url_id }}, {{ $json.group_id }}, '{{ $json.notification_type }}', '{{ $json.destination }}', '{{ $json.status }}', {{ $json.alert_message ? \"'\" + $json.alert_message.replace(/'/g, \"''\") + \"'\" : 'NULL' }}, NOW(), TRUE"
+      },
+      "id": "p6q7r8s9-t0u1-2345-pqrs-678901234567",
+      "name": "Log Alert Sent",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        3100,
+        200
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll"
+      },
+      "id": "q7r8s9t0-u1v2-3456-qrst-789012345678",
+      "name": "Merge Alert Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        3100,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Every Minute Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get URLs to Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get URLs to Check": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split in Batches": {
+      "main": [
+        [
+          {
+            "node": "Prepare URL Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare URL Data": {
+      "main": [
+        [
+          {
+            "node": "HTTP Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Health Check": {
+      "main": [
+        [
+          {
+            "node": "Process Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Response": {
+      "main": [
+        [
+          {
+            "node": "Save Health Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Health Report": {
+      "main": [
+        [
+          {
+            "node": "Update URL Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update URL Status": {
+      "main": [
+        [
+          {
+            "node": "Should Send Alert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Send Alert?": {
+      "main": [
+        [
+          {
+            "node": "Get Alert Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Alert Recipients": {
+      "main": [
+        [
+          {
+            "node": "Prepare Alert Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Alert Messages": {
+      "main": [
+        [
+          {
+            "node": "Is Email Alert?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is SMS Alert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Email Alert?": {
+      "main": [
+        [
+          {
+            "node": "Send Email Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is SMS Alert?": {
+      "main": [
+        [
+          {
+            "node": "Send SMS Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email Alert": {
+      "main": [
+        [
+          {
+            "node": "Merge Alert Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMS Alert": {
+      "main": [
+        [
+          {
+            "node": "Merge Alert Paths",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Alert Paths": {
+      "main": [
+        [
+          {
+            "node": "Log Alert Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "health-monitoring",
+      "name": "health-monitoring"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "12345678-1234-1234-1234-123456789012"
+}

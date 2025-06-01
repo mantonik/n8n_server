@@ -1,0 +1,106 @@
+{
+  "name": "Health Check - Daily Cleanup",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cleanup-trigger-001",
+      "name": "Daily at 2 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Get current data statistics before cleanup\nSELECT \n    'Before Cleanup' as phase,\n    (\n        SELECT COUNT(*) FROM health_reports\n    ) as total_health_reports,\n    (\n        SELECT COUNT(*) FROM alert_history\n    ) as total_alert_history,\n    (\n        SELECT COUNT(*) FROM health_reports \n        WHERE checked_at < DATE_SUB(NOW(), INTERVAL (\n            SELECT CAST(config_value AS UNSIGNED) FROM config WHERE config_key = 'data_retention_days'\n        ) DAY)\n    ) as old_health_reports,\n    (\n        SELECT COUNT(*) FROM alert_history \n        WHERE sent_at < DATE_SUB(NOW(), INTERVAL (\n            SELECT CAST(config_value AS UNSIGNED) FROM config WHERE config_key = 'data_retention_days'\n        ) DAY)\n    ) as old_alert_history,\n    (\n        SELECT config_value FROM config WHERE config_key = 'data_retention_days'\n    ) as retention_days,\n    NOW() as timestamp;"
+      },
+      "id": "cleanup-stats-before",
+      "name": "Get Stats Before",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Execute cleanup procedure\nCALL CleanOldHealthReports();"
+      },
+      "id": "cleanup-execute",
+      "name": "Execute Cleanup",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Get statistics after cleanup\nSELECT \n    'After Cleanup' as phase,\n    (\n        SELECT COUNT(*) FROM health_reports\n    ) as total_health_reports,\n    (\n        SELECT COUNT(*) FROM alert_history\n    ) as total_alert_history,\n    (\n        SELECT ROUND(\n            (SELECT SUM(data_length + index_length) FROM information_schema.tables \n             WHERE table_schema = DATABASE() AND table_name IN ('health_reports', 'alert_history')\n            ) / 1024 / 1024, 2\n        )\n    ) as database_size_mb,\n    NOW() as timestamp;"
+      },
+      "id": "cleanup-stats-after",
+      "name": "Get Stats After",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Optimize tables after cleanup for better performance\nOPTIMIZE TABLE health_reports, alert_history;"
+      },
+      "id": "cleanup-optimize",
+      "name": "Optimize Tables",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compile cleanup summary report\nconst beforeStats = $('Get Stats Before').first().json;\nconst cleanupResult = $('Execute Cleanup').first().json;\nconst afterStats = $('Get Stats After').first().json;\n\nconst summary = {\n  cleanup_date: new Date().toISOString().split('T')[0],\n  retention_days: beforeStats.retention_days,\n  before: {\n    health_reports: beforeStats.total_health_reports,\n    alert_history: beforeStats.total_alert_history,\n    old_health_reports: beforeStats.old_health_reports,\n    old_alert_history: beforeStats.old_alert_history\n  },\n  deleted: {\n    health_reports: cleanupResult.deleted_health_reports,\n    alert_history: cleanupResult.deleted_alert_history\n  },\n  after: {\n    health_reports: afterStats.total_health_reports,\n    alert_history: afterStats.total_alert_history,\n    database_size_mb: afterStats.database_size_mb\n  },\n  space_saved: {\n    health_reports: beforeStats.old_health_reports,\n    alert_history: beforeStats.old_alert_history,\n    total_records: beforeStats.old_health_reports + beforeStats.old_alert_history\n  }\n};\n\nconsole.log('=== DAILY CLEANUP COMPLETED ===');\nconsole.log(`Date: ${summary.cleanup_date}`);\nconsole.log(`Retention Period: ${summary.retention_days} days`);\nconsole.log('');\nconsole.log('Records Deleted:');\nconsole.log(`- Health Reports: ${summary.deleted.health_reports}`);\nconsole.log(`- Alert History: ${summary.deleted.alert_history}`);\nconsole.log(`- Total Deleted: ${summary.deleted.health_reports + summary.deleted.alert_history}`);\nconsole.log('');\nconsole.log('Current Database Status:');\nconsole.log(`- Health Reports
