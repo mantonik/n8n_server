@@ -79,6 +79,8 @@ nohup docker run -it --rm \
     --name n8n \
     -p 5678:5678 \
     -e N8N_HOST=dmseo03.dmcloudarchitect.com \
+    -e N8N_PORT=5678 \
+    -e N8N_PROTOCOL=https \
     -e WEBHOOK_URL=https://dmseo03.dmcloudarchitect.com \
     -e N8N_EDITOR_BASE_URL=https://dmseo03.dmcloudarchitect.com \
     -v n8n_data:/home/node/.n8n \
