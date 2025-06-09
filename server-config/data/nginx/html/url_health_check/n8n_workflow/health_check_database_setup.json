@@ -1,257 +1,66 @@
 {
-  "name": "Health Check - Database Setup - Sequential",
-  "nodes": [
-    {
-      "parameters": {},
-      "id": "setup-trigger-001",
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [240, 400]
-    },
-    {
       "parameters": {
         "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS config (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    config_key VARCHAR(50) UNIQUE NOT NULL,\n    config_value VARCHAR(255) NOT NULL,\n    description TEXT,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+        "query": "-- Create Additional Performance Indexes for Optimization\nCREATE INDEX IF NOT EXISTS idx_health_reports_performance ON health_reports(performance_status, checked_at);\nCREATE INDEX IF NOT EXISTS idx_health_reports_ssl ON health_reports(ssl_valid, ssl_expires_in_days);\nCREATE INDEX IF NOT EXISTS idx_monitored_urls_ssl_expiry ON monitored_urls(ssl_expires_at, check_ssl_expiry);\nCREATE INDEX IF NOT EXISTS idx_alert_history_severity ON alert_history(severity, sent_at);\nCREATE INDEX IF NOT EXISTS idx_alert_history_type_time ON alert_history(alert_type, sent_at);\nCREATE INDEX IF NOT EXISTS idx_health_reports_url_time ON health_reports(url_id, checked_at DESC);\nCREATE INDEX IF NOT EXISTS idx_monitored_urls_team_priority ON monitored_urls(team_name, priority);\nCREATE INDEX IF NOT EXISTS idx_config_category ON config(category, config_key);",
         "options": {}
       },
-      "id": "create-config-table",
-      "name": "Create Config Table",
+      "id": "create-performance-indexes",
+      "name": "Create Performance Indexes",
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.4,
-      "position": [460, 200],
+      "position": [1420, 400],
       "credentials": {
         "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS monitored_urls (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url VARCHAR(500) NOT NULL,\n    name VARCHAR(100) NOT NULL,\n    description TEXT,\n    expected_response TEXT,\n    expected_response_chars INT DEFAULT 200,\n    http_method ENUM('GET', 'POST', 'PUT', 'DELETE', 'HEAD') DEFAULT 'GET',\n    timeout_seconds INT DEFAULT 30,\n    check_interval_minutes INT DEFAULT 5,\n    priority ENUM('critical', 'high', 'normal', 'low') DEFAULT 'normal',\n    contact_person VARCHAR(100),\n    contact_email VARCHAR(255),\n    team_name VARCHAR(100),\n    failure_threshold INT DEFAULT 5,\n    current_failure_count INT DEFAULT 0,\n    last_checked_at TIMESTAMP NULL,\n    last_status ENUM('up', 'down', 'timeout', 'error', 'unknown') DEFAULT 'unknown',\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+        "query": "-- Create Incident Timeline View for Recent Activity\nCREATE OR REPLACE VIEW incident_timeline_48h AS\nSELECT \n    hr.checked_at as incident_time,\n    mu.id as url_id,\n    mu.name as site_name,\n    mu.url,\n    mu.priority,\n    mu.team_name,\n    hr.status as incident_type,\n    hr.response_time_ms,\n    hr.http_status_code,\n    hr.error_message,\n    CASE \n        WHEN hr.status = 'down' THEN '🔴 Site Down'\n        WHEN hr.status = 'error' THEN '⚠️ Error'\n        WHEN hr.status = 'timeout' THEN '⏰ Timeout'\n        WHEN hr.status = 'up' AND LAG(hr.status) OVER (PARTITION BY mu.id ORDER BY hr.checked_at) != 'up' THEN '✅ Recovered'\n        ELSE NULL\n    END as incident_description,\n    CASE \n        WHEN hr.status = 'up' AND LAG(hr.status) OVER (PARTITION BY mu.id ORDER BY hr.checked_at) != 'up' THEN\n            TIMESTAMPDIFF(MINUTE, \n                LAG(hr.checked_at) OVER (PARTITION BY mu.id ORDER BY hr.checked_at), \n                hr.checked_at)\n        ELSE NULL\n    END as outage_duration_minutes,\n    (SELECT COUNT(*) \n     FROM alert_history ah \n     WHERE ah.url_id = mu.id \n     AND ah.sent_at BETWEEN hr.checked_at AND DATE_ADD(hr.checked_at, INTERVAL 5 MINUTE)) as alerts_sent\nFROM health_reports hr\nJOIN monitored_urls mu ON hr.url_id = mu.id\nWHERE hr.checked_at > DATE_SUB(NOW(), INTERVAL 48 HOUR)\n  AND mu.is_active = TRUE\n  AND (hr.status != 'up' OR \n       (hr.status = 'up' AND LAG(hr.status) OVER (PARTITION BY mu.id ORDER BY hr.checked_at) != 'up'))\nORDER BY hr.checked_at DESC;",
         "options": {}
       },
-      "id": "create-urls-table",
-      "name": "Create URLs Table",
+      "id": "create-incident-timeline-view",
+      "name": "Create Incident Timeline View",
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.4,
-      "position": [460, 300],
+      "position": [1420, 500],
       "credentials": {
         "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS health_reports (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    status ENUM('up', 'down', 'timeout', 'error') NOT NULL,\n    response_time_ms INT,\n    http_status_code INT,\n    response_body_preview TEXT,\n    response_headers JSON,\n    error_message TEXT,\n    retry_attempt INT DEFAULT 1,\n    checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE\n);",
+        "query": "-- Final Setup Verification and Summary Report\nSELECT \n    'Enhanced Database Setup Complete!' as status,\n    (SELECT COUNT(*) FROM information_schema.tables \n     WHERE table_schema = DATABASE() \n     AND table_type = 'BASE TABLE') as total_tables,\n    (SELECT COUNT(*) FROM information_schema.views \n     WHERE table_schema = DATABASE()) as total_views,\n    (SELECT COUNT(*) FROM information_schema.routines \n     WHERE routine_schema = DATABASE() \n     AND routine_type = 'PROCEDURE') as total_procedures,\n    (SELECT COUNT(*) FROM config) as config_entries,\n    (SELECT COUNT(*) FROM monitored_urls) as sample_urls,\n    (SELECT COUNT(*) FROM alert_groups) as alert_groups,\n    (SELECT COUNT(*) FROM alert_group_members) as alert_members,\n    (SELECT COUNT(*) FROM url_alert_groups) as url_group_links,\n    (SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) \n     FROM information_schema.tables \n     WHERE table_schema = DATABASE()) as database_size_mb,\n    NOW() as setup_completed_at;",
         "options": {}
       },
-      "id": "create-reports-table",
-      "name": "Create Reports Table",
+      "id": "verify-enhanced-setup",
+      "name": "Verify Enhanced Setup",
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.4,
-      "position": [460, 400],
+      "position": [1420, 600],
       "credentials": {
         "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
         }
       }
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS alert_groups (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    group_name VARCHAR(100) UNIQUE NOT NULL,\n    description TEXT,\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
-        "options": {}
+        "jsCode": "const result = $input.first().json;\n\nconsole.log('===== 🎉 ENHANCED HEALTH CHECK DATABASE SETUP COMPLETE! 🎉 =====');\nconsole.log('');\nconsole.log('📊 SETUP SUMMARY:');\nconsole.log(`✅ Status: ${result.status}`);\nconsole.log(`📋 Total Tables: ${result.total_tables}`);\nconsole.log(`👁️ Total Views: ${result.total_views}`);\nconsole.log(`⚙️ Total Procedures: ${result.total_procedures}`);\nconsole.log(`🔧 Config Entries: ${result.config_entries}`);\nconsole.log(`🌐 Sample URLs: ${result.sample_urls}`);\nconsole.log(`📢 Alert Groups: ${result.alert_groups}`);\nconsole.log(`👥 Alert Members: ${result.alert_members}`);\nconsole.log(`🔗 URL-Group Links: ${result.url_group_links}`);\nconsole.log(`💾 Database Size: ${result.database_size_mb} MB`);\nconsole.log(`⏰ Setup Completed: ${result.setup_completed_at}`);\nconsole.log('');\nconsole.log('✨ NEW ENHANCED FEATURES ADDED:');\nconsole.log('🔐 Security Features:');\nconsole.log('   • Authentication headers and tokens');\nconsole.log('   • Custom headers support');\nconsole.log('   • SSL validation controls');\nconsole.log('   • Basic auth credentials');\nconsole.log('');\nconsole.log('🔒 SSL Certificate Monitoring:');\nconsole.log('   • Automatic expiry tracking');\nconsole.log('   • Configurable warning periods');\nconsole.log('   • SSL issuer information');\nconsole.log('   • SSL-specific alerting');\nconsole.log('');\nconsole.log('⚡ Performance Monitoring:');\nconsole.log('   • Response time thresholds');\nconsole.log('   • Performance classification');\nconsole.log('   • Performance-based alerts');\nconsole.log('');\nconsole.log('📢 Enhanced Alert System:');\nconsole.log('   • Multiple notification types (Slack, Teams, webhooks)');\nconsole.log('   • Escalation levels (primary, secondary, executive)');\nconsole.log('   • Business hours configuration');\nconsole.log('   • Performance and SSL alerts');\nconsole.log('');\nconsole.log('🔧 Maintenance Management:');\nconsole.log('   • Scheduled maintenance windows');\nconsole.log('   • Alert suppression during maintenance');\nconsole.log('   • Recurring maintenance patterns');\nconsole.log('');\nconsole.log('👨‍💼 Team Management:');\nconsole.log('   • Team-based organization');\nconsole.log('   • Team performance metrics');\nconsole.log('   • Role-based notifications');\nconsole.log('');\nconsole.log('📊 MONITORING VIEWS CREATED FOR REPORTING WEBSITE:');\nconsole.log('📈 dashboard_overview - Real-time system summary');\nconsole.log('🌐 url_status_detailed - Complete service status');\nconsole.log('📋 sla_report_30day - 30-day SLA performance');\nconsole.log('🔒 ssl_certificate_status - SSL monitoring');\nconsole.log('👥 team_performance_summary - Team metrics');\nconsole.log('💼 executive_dashboard - Management KPIs');\nconsole.log('⏰ incident_timeline_48h - Recent incidents');\nconsole.log('');\nconsole.log('⚙️ STORED PROCEDURES CREATED:');\nconsole.log('🧹 CleanOldHealthReports() - Enhanced data cleanup');\nconsole.log('🔒 UpdateSSLCertificateInfo() - SSL certificate updates');\nconsole.log('⚡ UpdatePerformanceStatus() - Performance classification');\nconsole.log('');\nconsole.log('🚀 NEXT STEPS TO COMPLETE YOUR MONITORING SYSTEM:');\nconsole.log('1. 📧 Update alert group emails with real addresses');\nconsole.log('2. 🌐 Add your own URLs with enhanced features');\nconsole.log('3. 📨 Configure SMTP credentials for email alerts');\nconsole.log('4. 🔒 Enable SSL monitoring for HTTPS endpoints');\nconsole.log('5. ⚡ Set performance thresholds for your services');\nconsole.log('6. 🔄 Import and activate the enhanced monitoring workflow');\nconsole.log('7. 📊 Build reporting website using the monitoring views');\nconsole.log('8. 🔧 Schedule maintenance windows as needed');\nconsole.log('9. 👥 Organize services by teams and priorities');\nconsole.log('10. 📱 Set up mobile/API integrations');\nconsole.log('');\nconsole.log('📋 QUICK VIEW USAGE EXAMPLES:');\nconsole.log('System Overview: SELECT * FROM dashboard_overview;');\nconsole.log('Site Status: SELECT * FROM url_status_detailed;');\nconsole.log('SLA Report: SELECT * FROM sla_report_30day;');\nconsole.log('SSL Status: SELECT * FROM ssl_certificate_status;');\nconsole.log('Team Report: SELECT * FROM team_performance_summary;');\nconsole.log('Executive View: SELECT * FROM executive_dashboard;');\nconsole.log('Recent Incidents: SELECT * FROM incident_timeline_48h;');\nconsole.log('');\nconsole.log('🎯 SYSTEM READY FOR:');\nconsole.log('✅ Enterprise-grade monitoring');\nconsole.log('✅ Professional reporting dashboards');\nconsole.log('✅ Team-based management');\nconsole.log('✅ Executive reporting');\nconsole.log('✅ Security and SSL monitoring');\nconsole.log('✅ Performance optimization');\nconsole.log('✅ Incident management');\nconsole.log('✅ API integrations');\nconsole.log('');\nconsole.log('🌟 SUCCESS! Your enhanced monitoring database is ready!');\n\nreturn {\n  json: {\n    setup_status: 'ENHANCED_SUCCESS_V3',\n    total_tables: result.total_tables,\n    total_views: result.total_views,\n    total_procedures: result.total_procedures,\n    database_size_mb: result.database_size_mb,\n    total_records: result.config_entries + result.sample_urls + result.alert_groups + result.alert_members + result.url_group_links,\n    setup_time: result.setup_completed_at,\n    version: '3.0-Enhanced',\n    features_added: [\n      'Security Authentication',\n      'SSL Certificate Monitoring',\n      'Performance Thresholds',\n      'Enhanced Alerting System',\n      'Maintenance Windows',\n      'Team Management',\n      'Comprehensive Reporting Views',\n      'Incident Timeline Tracking',\n      'Executive Dashboards',\n      'API-Ready Data Structures'\n    ],\n    monitoring_views: [\n      'dashboard_overview',\n      'url_status_detailed',\n      'sla_report_30day',\n      'ssl_certificate_status',\n      'team_performance_summary',\n      'executive_dashboard',\n      'incident_timeline_48h'\n    ],\n    stored_procedures: [\n      'CleanOldHealthReports',\n      'UpdateSSLCertificateInfo',\n      'UpdatePerformanceStatus'\n    ],\n    ready_for: [\n      'Enterprise Monitoring',\n      'Professional Dashboards',\n      'Team Management',\n      'Executive Reporting',\n      'Security Monitoring',\n      'Performance Optimization',\n      'Incident Management',\n      'API Integrations'\n    ]\n  }\n};"
       },
-      "id": "create-alert-groups-table",
-      "name": "Create Alert Groups Table",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [460, 500],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS alert_group_members (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    group_id INT NOT NULL,\n    notification_type ENUM('email', 'sms', 'telegram', 'webhook') NOT NULL,\n    destination VARCHAR(255) NOT NULL,\n    member_name VARCHAR(100),\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE CASCADE\n);",
-        "options": {}
-      },
-      "id": "create-group-members-table",
-      "name": "Create Group Members Table",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [460, 600],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS url_alert_groups (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    group_id INT NOT NULL,\n    alert_on_down BOOLEAN DEFAULT TRUE,\n    alert_on_up BOOLEAN DEFAULT TRUE,\n    alert_on_timeout BOOLEAN DEFAULT TRUE,\n    alert_on_error BOOLEAN DEFAULT TRUE,\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE CASCADE,\n    UNIQUE KEY unique_url_group (url_id, group_id)\n);",
-        "options": {}
-      },
-      "id": "create-url-groups-table",
-      "name": "Create URL Groups Table",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [460, 700],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS alert_history (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    group_id INT,\n    notification_type ENUM('email', 'sms', 'telegram', 'webhook') NOT NULL,\n    destination VARCHAR(255) NOT NULL,\n    alert_type ENUM('down', 'up', 'timeout', 'error') NOT NULL,\n    message TEXT,\n    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    success BOOLEAN DEFAULT TRUE,\n    error_details TEXT,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE SET NULL\n);",
-        "options": {}
-      },
-      "id": "create-alerts-table",
-      "name": "Create Alerts Table",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [460, 800],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT IGNORE INTO config (config_key, config_value, description) VALUES\n('default_timeout', '30', 'Default timeout in seconds for HTTP requests'),\n('default_check_interval', '5', 'Default check interval in minutes'),\n('default_failure_threshold', '5', 'Default number of failures before sending alert'),\n('data_retention_days', '30', 'Number of days to keep health report data'),\n('retry_delay_seconds', '30', 'Seconds to wait before retry'),\n('max_response_preview_chars', '200', 'Maximum characters to store from response body'),\n('notification_cooldown_minutes', '60', 'Minutes to wait between same type notifications for same URL'),\n('batch_size', '10', 'Number of URLs to process in each batch'),\n('max_concurrent_checks', '5', 'Maximum concurrent health checks'),\n('alert_email_from', 'healthcheck@yourcompany.com', 'Default from email for alerts');",
-        "options": {}
-      },
-      "id": "insert-config-data",
-      "name": "Insert Config Data",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [780, 200],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT IGNORE INTO monitored_urls (id, url, name, description, priority, contact_person, contact_email, check_interval_minutes) VALUES\n(1, 'https://www.google.com', 'Google Search', 'Main Google search page - always available', 'critical', 'System Admin', 'admin@yourcompany.com', 2),\n(2, 'https://httpstat.us/200', 'HTTP Test - Success', 'Test endpoint that returns HTTP 200', 'normal', 'DevOps Team', 'devops@yourcompany.com', 5),\n(3, 'https://httpstat.us/500', 'HTTP Test - Error', 'Test endpoint that returns HTTP 500 (for testing alerts)', 'low', 'DevOps Team', 'devops@yourcompany.com', 5),\n(4, 'https://www.github.com', 'GitHub', 'GitHub main website', 'high', 'Development Team', 'dev@yourcompany.com', 3);",
-        "options": {}
-      },
-      "id": "insert-sample-urls",
-      "name": "Insert Sample URLs",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [780, 300],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT IGNORE INTO alert_groups (group_name, description) VALUES\n('critical-ops', 'Critical operations team - 24/7 monitoring'),\n('dev-team', 'Development team alerts'),\n('business-hours', 'Business hours support team'),\n('executives', 'Executive level alerts for critical issues');",
-        "options": {}
-      },
-      "id": "insert-alert-groups",
-      "name": "Insert Alert Groups",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [780, 400],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT IGNORE INTO alert_group_members (group_id, notification_type, destination, member_name) VALUES\n(1, 'email', 'ops-critical@yourcompany.com', 'Critical Ops Team'),\n(1, 'sms', '1234567890@vztext.com', 'Ops Manager Mobile'),\n(1, 'email', 'oncall@yourcompany.com', 'On-Call Engineer'),\n(2, 'email', 'dev-team@yourcompany.com', 'Development Team'),\n(2, 'email', 'devops@yourcompany.com', 'DevOps Team'),\n(3, 'email', 'support@yourcompany.com', 'Support Team'),\n(3, 'email', 'help-desk@yourcompany.com', 'Help Desk'),\n(4, 'email', 'cto@yourcompany.com', 'Chief Technology Officer'),\n(4, 'email', 'admin@yourcompany.com', 'System Administrator');",
-        "options": {}
-      },
-      "id": "insert-group-members",
-      "name": "Insert Group Members",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [780, 500],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT IGNORE INTO url_alert_groups (url_id, group_id, alert_on_down, alert_on_up, alert_on_timeout, alert_on_error) VALUES\n(1, 1, TRUE, TRUE, TRUE, TRUE),\n(1, 4, TRUE, FALSE, TRUE, TRUE),\n(2, 2, TRUE, TRUE, TRUE, TRUE),\n(3, 2, TRUE, TRUE, TRUE, TRUE),\n(4, 2, TRUE, TRUE, TRUE, TRUE),\n(4, 3, TRUE, FALSE, FALSE, FALSE);",
-        "options": {}
-      },
-      "id": "link-urls-to-groups",
-      "name": "Link URLs to Groups",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [780, 600],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT \n    'Setup Complete!' as status,\n    (\n        SELECT COUNT(*) FROM information_schema.tables \n        WHERE table_schema = DATABASE() \n        AND table_name IN ('config', 'monitored_urls', 'health_reports', 'alert_groups', 'alert_group_members', 'url_alert_groups', 'alert_history')\n    ) as tables_created,\n    (\n        SELECT COUNT(*) FROM config\n    ) as config_entries,\n    (\n        SELECT COUNT(*) FROM monitored_urls\n    ) as sample_urls,\n    (\n        SELECT COUNT(*) FROM alert_groups\n    ) as alert_groups,\n    (\n        SELECT COUNT(*) FROM alert_group_members\n    ) as alert_members,\n    (\n        SELECT COUNT(*) FROM url_alert_groups\n    ) as url_group_links,\n    NOW() as setup_completed_at;",
-        "options": {}
-      },
-      "id": "verify-setup",
-      "name": "Verify Setup",
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.4,
-      "position": [1100, 400],
-      "credentials": {
-        "mySql": {
-          "id": "KRPFHorENpUr4LJ8",
-          "name": "MySQL n8n_url_healthcheck"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const result = $input.first().json;\n\nconsole.log('=== HEALTH CHECK DATABASE SETUP COMPLETE ===');\nconsole.log(`Status: ${result.status}`);\nconsole.log(`Tables Created: ${result.tables_created}/7`);\nconsole.log(`Config Entries: ${result.config_entries}`);\nconsole.log(`Sample URLs: ${result.sample_urls}`);\nconsole.log(`Alert Groups: ${result.alert_groups}`);\nconsole.log(`Alert Members: ${result.alert_members}`);\nconsole.log(`URL-Group Links: ${result.url_group_links}`);\nconsole.log(`Setup Completed: ${result.setup_completed_at}`);\nconsole.log('');\nconsole.log('SUCCESS! Database is ready for health monitoring.');\nconsole.log('');\nconsole.log('Next Steps:');\nconsole.log('1. Update alert group member emails with real addresses');\nconsole.log('2. Add your own URLs to monitor');\nconsole.log('3. Configure SMTP credentials for email alerts');\nconsole.log('4. Import and activate the main monitoring workflow');\n\nreturn {\n  json: {\n    setup_status: 'SUCCESS',\n    tables_created: result.tables_created,\n    total_records: result.config_entries + result.sample_urls + result.alert_groups + result.alert_members + result.url_group_links,\n    setup_time: result.setup_completed_at\n  }\n};"
-      },
-      "id": "setup-summary",
-      "name": "Setup Summary",
+      "id": "enhanced-setup-summary",
+      "name": "Enhanced Setup Summary & Success Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1100, 600]
+      "position": [1420, 800]
     }
   ],
   "connections": {
@@ -270,139 +79,249 @@
       "main": [
         [
           {
-            "node": "Create URLs Table",
+            "node": "Create Enhanced URLs Table",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create URLs Table": {
+    "Create Enhanced URLs Table": {
       "main": [
         [
           {
-            "node": "Create Reports Table",
+            "node": "Create Enhanced Reports Table",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create Reports Table": {
+    "Create Enhanced Reports Table": {
       "main": [
         [
           {
-            "node": "Create Alert Groups Table",
+            "node": "Create Enhanced Alert Groups",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create Alert Groups Table": {
+    "Create Enhanced Alert Groups": {
       "main": [
         [
           {
-            "node": "Create Group Members Table",
+            "node": "Create Enhanced Group Members",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create Group Members Table": {
+    "Create Enhanced Group Members": {
       "main": [
         [
           {
-            "node": "Create URL Groups Table",
+            "node": "Create Enhanced URL Groups",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create URL Groups Table": {
+    "Create Enhanced URL Groups": {
       "main": [
         [
           {
-            "node": "Create Alerts Table",
+            "node": "Create Enhanced Alerts Table",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create Alerts Table": {
+    "Create Enhanced Alerts Table": {
       "main": [
         [
           {
-            "node": "Insert Config Data",
+            "node": "Create Maintenance Tables",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Config Data": {
+    "Create Maintenance Tables": {
       "main": [
         [
           {
-            "node": "Insert Sample URLs",
+            "node": "Insert Enhanced Config Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Sample URLs": {
+    "Insert Enhanced Config Data": {
       "main": [
         [
           {
-            "node": "Insert Alert Groups",
+            "node": "Insert Enhanced Sample URLs",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Alert Groups": {
+    "Insert Enhanced Sample URLs": {
       "main": [
         [
           {
-            "node": "Insert Group Members",
+            "node": "Insert Enhanced Alert Groups",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Group Members": {
+    "Insert Enhanced Alert Groups": {
       "main": [
         [
           {
-            "node": "Link URLs to Groups",
+            "node": "Insert Enhanced Group Members",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Link URLs to Groups": {
+    "Insert Enhanced Group Members": {
       "main": [
         [
           {
-            "node": "Verify Setup",
+            "node": "Link URLs to Enhanced Groups",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify Setup": {
+    "Link URLs to Enhanced Groups": {
       "main": [
         [
           {
-            "node": "Setup Summary",
+            "node": "Create Dashboard Overview View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Dashboard Overview View": {
+      "main": [
+        [
+          {
+            "node": "Create URL Status Detailed View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create URL Status Detailed View": {
+      "main": [
+        [
+          {
+            "node": "Create SLA Report View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SLA Report View": {
+      "main": [
+        [
+          {
+            "node": "Create SSL Certificate View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SSL Certificate View": {
+      "main": [
+        [
+          {
+            "node": "Create Team Performance View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Team Performance View": {
+      "main": [
+        [
+          {
+            "node": "Create Executive Dashboard View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Executive Dashboard View": {
+      "main": [
+        [
+          {
+            "node": "Create Enhanced Procedures",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Enhanced Procedures": {
+      "main": [
+        [
+          {
+            "node": "Create Performance Indexes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Performance Indexes": {
+      "main": [
+        [
+          {
+            "node": "Create Incident Timeline View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Incident Timeline View": {
+      "main": [
+        [
+          {
+            "node": "Verify Enhanced Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Enhanced Setup": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Setup Summary & Success Report",
             "type": "main",
             "index": 0
           }
@@ -415,8 +334,716 @@
     "executionOrder": "v1"
   },
   "staticData": null,
-  "tags": [],
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "enhanced-monitoring-v3",
+      "name": "enhanced-monitoring-v3"
+    },
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "database-setup",
+      "name": "database-setup"
+    },
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "enterprise-ready",
+      "name": "enterprise-ready"
+    }
+  ],
   "triggerCount": 1,
   "updatedAt": "2024-01-01T00:00:00.000Z",
-  "versionId": "setup-sequential-v1"
-}
+  "versionId": "enhanced-setup-v3-complete"
+}{
+  "name": "Enhanced Health Check - Database Setup with Monitoring Views",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "setup-trigger-001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Enhanced Configuration Table\nCREATE TABLE IF NOT EXISTS config (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    config_key VARCHAR(50) UNIQUE NOT NULL,\n    config_value VARCHAR(255) NOT NULL,\n    description TEXT,\n    category ENUM('monitoring', 'alerts', 'performance', 'security', 'maintenance') DEFAULT 'monitoring',\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    INDEX idx_category (category),\n    INDEX idx_config_key (config_key)\n);",
+        "options": {}
+      },
+      "id": "create-config-table",
+      "name": "Create Config Table",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 200],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Enhanced Monitored URLs Table with Security & Performance Features\nCREATE TABLE IF NOT EXISTS monitored_urls (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url VARCHAR(500) NOT NULL,\n    name VARCHAR(100) NOT NULL,\n    description TEXT,\n    expected_response TEXT,\n    expected_response_chars INT DEFAULT 200,\n    http_method ENUM('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS') DEFAULT 'GET',\n    timeout_seconds INT DEFAULT 30,\n    check_interval_minutes INT DEFAULT 5,\n    priority ENUM('critical', 'high', 'normal', 'low') DEFAULT 'normal',\n    \n    -- Contact Information\n    contact_person VARCHAR(100),\n    contact_email VARCHAR(255),\n    team_name VARCHAR(100),\n    \n    -- Failure Management\n    failure_threshold INT DEFAULT 5,\n    current_failure_count INT DEFAULT 0,\n    \n    -- Status Tracking\n    last_checked_at TIMESTAMP NULL,\n    last_status ENUM('up', 'down', 'timeout', 'error', 'unknown') DEFAULT 'unknown',\n    \n    -- Security Features (NEW)\n    auth_header VARCHAR(255) COMMENT 'Authorization header for authenticated requests',\n    auth_token VARCHAR(255) COMMENT 'Bearer token or API key',\n    auth_username VARCHAR(100) COMMENT 'Basic auth username',\n    auth_password VARCHAR(255) COMMENT 'Basic auth password (encrypted)',\n    custom_headers JSON COMMENT 'Additional custom headers',\n    ignore_ssl_errors BOOLEAN DEFAULT FALSE COMMENT 'Skip SSL certificate validation',\n    \n    -- SSL Certificate Monitoring (NEW)\n    check_ssl_expiry BOOLEAN DEFAULT FALSE COMMENT 'Monitor SSL certificate expiration',\n    ssl_days_warning INT DEFAULT 30 COMMENT 'Days before expiry to start warning',\n    ssl_expires_at DATETIME NULL COMMENT 'SSL certificate expiration date',\n    ssl_issuer VARCHAR(255) COMMENT 'SSL certificate issuer',\n    ssl_last_checked TIMESTAMP NULL COMMENT 'Last SSL check timestamp',\n    \n    -- Performance Thresholds (NEW)\n    response_time_warning_ms INT DEFAULT 5000 COMMENT 'Response time warning threshold',\n    response_time_critical_ms INT DEFAULT 10000 COMMENT 'Response time critical threshold',\n    \n    -- System Fields\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    \n    -- Enhanced Indexes\n    INDEX idx_active_lastcheck (is_active, last_checked_at),\n    INDEX idx_priority (priority),\n    INDEX idx_next_check (check_interval_minutes, last_checked_at),\n    INDEX idx_ssl_monitoring (check_ssl_expiry, ssl_expires_at),\n    INDEX idx_status_priority (last_status, priority),\n    INDEX idx_team (team_name),\n    FULLTEXT idx_search (name, description, url)\n);",
+        "options": {}
+      },
+      "id": "create-urls-table",
+      "name": "Create Enhanced URLs Table",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 300],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Enhanced Health Reports Table\nCREATE TABLE IF NOT EXISTS health_reports (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    status ENUM('up', 'down', 'timeout', 'error') NOT NULL,\n    response_time_ms INT,\n    http_status_code INT,\n    response_body_preview TEXT,\n    response_headers JSON,\n    error_message TEXT,\n    retry_attempt INT DEFAULT 1,\n    \n    -- SSL Information (NEW)\n    ssl_valid BOOLEAN NULL COMMENT 'SSL certificate validity',\n    ssl_expires_in_days INT NULL COMMENT 'Days until SSL expiry',\n    ssl_error TEXT COMMENT 'SSL-related errors',\n    \n    -- Performance Classification (NEW)\n    performance_status ENUM('excellent', 'good', 'warning', 'critical') NULL,\n    \n    checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    \n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE CASCADE,\n    UNIQUE KEY unique_url_group (url_id, group_id),\n    INDEX idx_url_alerts (url_id, is_active),\n    INDEX idx_group_urls (group_id, is_active)\n);",
+        "options": {}
+      },
+      "id": "create-url-groups-table",
+      "name": "Create Enhanced URL Groups",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 700],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Enhanced Alert History Table\nCREATE TABLE IF NOT EXISTS alert_history (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    group_id INT,\n    notification_type ENUM('email', 'sms', 'telegram', 'webhook', 'slack', 'teams') NOT NULL,\n    destination VARCHAR(255) NOT NULL,\n    alert_type ENUM('down', 'up', 'timeout', 'error', 'ssl_expiry', 'performance_warning', 'performance_critical') NOT NULL,\n    severity ENUM('info', 'warning', 'critical') DEFAULT 'warning',\n    message TEXT,\n    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    success BOOLEAN DEFAULT TRUE,\n    error_details TEXT,\n    escalation_level INT DEFAULT 1,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE SET NULL,\n    INDEX idx_url_sent (url_id, sent_at),\n    INDEX idx_group_sent (group_id, sent_at),\n    INDEX idx_sent_at (sent_at),\n    INDEX idx_alert_type (alert_type, sent_at),\n    INDEX idx_severity (severity, sent_at)\n);",
+        "options": {}
+      },
+      "id": "create-alerts-table",
+      "name": "Create Enhanced Alerts Table",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 800],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Maintenance Windows Tables\nCREATE TABLE IF NOT EXISTS maintenance_windows (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    name VARCHAR(100) NOT NULL,\n    description TEXT,\n    start_time DATETIME NOT NULL,\n    end_time DATETIME NOT NULL,\n    is_recurring BOOLEAN DEFAULT FALSE,\n    recurrence_pattern VARCHAR(100) COMMENT 'Cron-like pattern for recurring maintenance',\n    suppress_alerts BOOLEAN DEFAULT TRUE,\n    created_by VARCHAR(100),\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    INDEX idx_time_range (start_time, end_time),\n    INDEX idx_active_windows (start_time, end_time, suppress_alerts)\n);\n\nCREATE TABLE IF NOT EXISTS maintenance_window_urls (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    maintenance_window_id INT NOT NULL,\n    url_id INT NOT NULL,\n    FOREIGN KEY (maintenance_window_id) REFERENCES maintenance_windows(id) ON DELETE CASCADE,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    UNIQUE KEY unique_maintenance_url (maintenance_window_id, url_id)\n);",
+        "options": {}
+      },
+      "id": "create-maintenance-tables",
+      "name": "Create Maintenance Tables",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 900],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Insert Enhanced Configuration Data\nINSERT IGNORE INTO config (config_key, config_value, description, category) VALUES\n-- Monitoring Settings\n('default_timeout', '30', 'Default timeout in seconds for HTTP requests', 'monitoring'),\n('default_check_interval', '5', 'Default check interval in minutes', 'monitoring'),\n('default_failure_threshold', '5', 'Default number of failures before sending alert', 'monitoring'),\n('max_concurrent_checks', '10', 'Maximum concurrent health checks', 'monitoring'),\n('batch_size', '20', 'Number of URLs to process in each batch', 'monitoring'),\n\n-- Performance Settings\n('response_time_warning_default', '5000', 'Default response time warning threshold (ms)', 'performance'),\n('response_time_critical_default', '10000', 'Default response time critical threshold (ms)', 'performance'),\n('ssl_warning_days_default', '30', 'Default days before SSL expiry to warn', 'performance'),\n\n-- Alert Settings\n('notification_cooldown_minutes', '60', 'Minutes to wait between same type notifications', 'alerts'),\n('escalation_delay_minutes', '30', 'Minutes before escalating to next level', 'alerts'),\n('alert_email_from', 'healthcheck@yourcompany.com', 'Default from email for alerts', 'alerts'),\n('max_alerts_per_hour', '20', 'Maximum alerts per URL per hour', 'alerts'),\n\n-- Security Settings\n('enable_ssl_monitoring', 'true', 'Enable SSL certificate monitoring', 'security'),\n('default_user_agent', 'HealthCheck-Monitor/2.0', 'Default User-Agent header', 'security'),\n('encrypt_auth_tokens', 'true', 'Encrypt stored authentication tokens', 'security'),\n\n-- Maintenance Settings\n('data_retention_days', '90', 'Number of days to keep health report data', 'maintenance'),\n('cleanup_batch_size', '1000', 'Number of records to delete per cleanup batch', 'maintenance'),\n('optimize_tables_weekly', 'true', 'Run OPTIMIZE TABLE weekly', 'maintenance');",
+        "options": {}
+      },
+      "id": "insert-config-data",
+      "name": "Insert Enhanced Config Data",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 200],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Insert Enhanced Sample URLs with Security & Performance Features\nINSERT IGNORE INTO monitored_urls (\n    id, url, name, description, priority, contact_person, contact_email, team_name,\n    check_interval_minutes, response_time_warning_ms, response_time_critical_ms,\n    check_ssl_expiry, ssl_days_warning, timeout_seconds\n) VALUES\n(1, 'https://www.google.com', 'Google Search', 'Main Google search page - always available', \n 'critical', 'System Admin', 'admin@yourcompany.com', 'Infrastructure', 2, 2000, 5000, TRUE, 30, 15),\n\n(2, 'https://httpstat.us/200', 'HTTP Test - Success', 'Test endpoint that returns HTTP 200', \n 'normal', 'DevOps Team', 'devops@yourcompany.com', 'DevOps', 5, 3000, 8000, FALSE, 30, 30),\n\n(3, 'https://httpstat.us/500', 'HTTP Test - Error', 'Test endpoint that returns HTTP 500 (for testing alerts)', \n 'low', 'DevOps Team', 'devops@yourcompany.com', 'DevOps', 5, 3000, 8000, FALSE, 30, 30),\n\n(4, 'https://www.github.com', 'GitHub', 'GitHub main website', \n 'high', 'Development Team', 'dev@yourcompany.com', 'Development', 3, 4000, 10000, TRUE, 14, 25),\n\n(5, 'https://api.github.com', 'GitHub API', 'GitHub REST API endpoint', \n 'high', 'Development Team', 'dev@yourcompany.com', 'Development', 2, 1000, 3000, TRUE, 30, 20);",
+        "options": {}
+      },
+      "id": "insert-sample-urls",
+      "name": "Insert Enhanced Sample URLs",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 300],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Insert Enhanced Alert Groups\nINSERT IGNORE INTO alert_groups (group_name, description, escalation_level, business_hours_only, timezone) VALUES\n('critical-ops', 'Critical operations team - 24/7 monitoring', 'primary', FALSE, 'UTC'),\n('dev-team', 'Development team alerts', 'primary', TRUE, 'UTC'),\n('business-hours', 'Business hours support team', 'secondary', TRUE, 'UTC'),\n('executives', 'Executive level alerts for critical issues', 'executive', FALSE, 'UTC'),\n('security-team', 'Security and SSL monitoring alerts', 'primary', FALSE, 'UTC');",
+        "options": {}
+      },
+      "id": "insert-alert-groups",
+      "name": "Insert Enhanced Alert Groups",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 400],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Insert Enhanced Alert Group Members\nINSERT IGNORE INTO alert_group_members (group_id, notification_type, destination, member_name, role, priority) VALUES\n-- Critical Ops Team\n(1, 'email', 'ops-critical@yourcompany.com', 'Critical Ops Team', 'Operations', 1),\n(1, 'sms', '1234567890@vztext.com', 'Ops Manager', 'Manager', 1),\n(1, 'email', 'oncall@yourcompany.com', 'On-Call Engineer', 'Engineer', 2),\n\n-- Development Team\n(2, 'email', 'dev-team@yourcompany.com', 'Development Team', 'Development', 1),\n(2, 'slack', '#dev-alerts', 'Dev Team Slack', 'Team Channel', 1),\n\n-- Business Hours\n(3, 'email', 'support@yourcompany.com', 'Support Team', 'Support', 1),\n\n-- Executives\n(4, 'email', 'cto@yourcompany.com', 'Chief Technology Officer', 'Executive', 1),\n(4, 'email', 'admin@yourcompany.com', 'System Administrator', 'Administrator', 2),\n\n-- Security Team\n(5, 'email', 'security@yourcompany.com', 'Security Team', 'Security', 1),\n(5, 'email', 'ssl-monitor@yourcompany.com', 'SSL Monitor', 'Monitoring', 1);",
+        "options": {}
+      },
+      "id": "insert-group-members",
+      "name": "Insert Enhanced Group Members",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 500],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Insert Enhanced URL Alert Group Links\nINSERT IGNORE INTO url_alert_groups (\n    url_id, group_id, alert_on_down, alert_on_up, alert_on_timeout, alert_on_error,\n    alert_on_ssl_expiry, alert_on_performance_warning, alert_on_performance_critical\n) VALUES\n(1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE),  -- Google -> Critical Ops\n(1, 4, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE), -- Google -> Executives (no recovery spam)\n(1, 5, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE), -- Google -> Security (SSL only)\n\n(2, 2, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE), -- HTTP Test 200 -> Dev Team\n(3, 2, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE), -- HTTP Test 500 -> Dev Team\n\n(4, 2, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),    -- GitHub -> Dev Team (all alerts)\n(4, 3, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE), -- GitHub -> Business Hours (down only)\n(4, 5, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE), -- GitHub -> Security (SSL only)\n\n(5, 2, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),    -- GitHub API -> Dev Team (all alerts)\n(5, 1, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE);  -- GitHub API -> Critical Ops (critical perf)",
+        "options": {}
+      },
+      "id": "link-urls-to-groups",
+      "name": "Link URLs to Enhanced Groups",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [780, 600],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Dashboard Overview View\nCREATE OR REPLACE VIEW dashboard_overview AS\nSELECT \n    COUNT(*) as total_sites,\n    SUM(CASE WHEN mu.last_status = 'up' THEN 1 ELSE 0 END) as sites_up,\n    SUM(CASE WHEN mu.last_status = 'down' THEN 1 ELSE 0 END) as sites_down,\n    SUM(CASE WHEN mu.last_status = 'error' THEN 1 ELSE 0 END) as sites_error,\n    SUM(CASE WHEN mu.last_status = 'timeout' THEN 1 ELSE 0 END) as sites_timeout,\n    SUM(CASE WHEN mu.last_status = 'unknown' OR mu.last_status IS NULL THEN 1 ELSE 0 END) as sites_unknown,\n    SUM(CASE WHEN mu.current_failure_count >= mu.failure_threshold THEN 1 ELSE 0 END) as sites_alerting,\n    SUM(CASE WHEN mu.priority = 'critical' AND mu.last_status != 'up' THEN 1 ELSE 0 END) as critical_sites_down,\n    ROUND((SUM(CASE WHEN mu.last_status = 'up' THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as overall_uptime_percent,\n    SUM(CASE WHEN mu.check_ssl_expiry = TRUE THEN 1 ELSE 0 END) as ssl_monitored_sites,\n    SUM(CASE WHEN mu.ssl_expires_at <= DATE_ADD(NOW(), INTERVAL mu.ssl_days_warning DAY) \n             AND mu.check_ssl_expiry = TRUE THEN 1 ELSE 0 END) as ssl_expiring_soon,\n    MAX(mu.last_checked_at) as last_system_check,\n    NOW() as report_generated_at\nFROM monitored_urls mu \nWHERE mu.is_active = TRUE;",
+        "options": {}
+      },
+      "id": "create-dashboard-view",
+      "name": "Create Dashboard Overview View",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1100, 200],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create URL Status Detailed View\nCREATE OR REPLACE VIEW url_status_detailed AS\nSELECT \n    mu.id as url_id,\n    mu.name as site_name,\n    mu.url,\n    mu.priority,\n    mu.team_name,\n    mu.contact_person,\n    mu.contact_email,\n    mu.last_status as current_status,\n    CASE \n        WHEN mu.last_status = 'up' THEN '✅ UP'\n        WHEN mu.last_status = 'down' THEN '❌ DOWN'\n        WHEN mu.last_status = 'error' THEN '⚠️ ERROR'\n        WHEN mu.last_status = 'timeout' THEN '⏰ TIMEOUT'\n        WHEN mu.last_status = 'unknown' THEN '❓ UNKNOWN'\n        ELSE '❓ NOT CHECKED'\n    END as status_display,\n    mu.last_checked_at,\n    mu.check_interval_minutes,\n    CASE \n        WHEN mu.last_checked_at IS NULL THEN '🔴 Never checked'\n        WHEN mu.last_checked_at < DATE_SUB(NOW(), INTERVAL (mu.check_interval_minutes + 5) MINUTE) \n            THEN '🟡 Overdue for check'\n        ELSE '🟢 On schedule'\n    END as check_status,\n    mu.current_failure_count,\n    mu.failure_threshold,\n    CONCAT(mu.current_failure_count, '/', mu.failure_threshold) as failure_count_display,\n    CASE \n        WHEN mu.current_failure_count >= mu.failure_threshold THEN '🚨 ALERTING'\n        WHEN mu.current_failure_count > 0 THEN '⚠️ FAILING'\n        ELSE '✅ HEALTHY'\n    END as health_status,\n    hr.response_time_ms as last_response_time,\n    hr.http_status_code as last_http_code,\n    hr.error_message as last_error,\n    CASE \n        WHEN hr.response_time_ms IS NULL THEN NULL\n        WHEN hr.response_time_ms <= mu.response_time_warning_ms THEN '🟢 Excellent'\n        WHEN hr.response_time_ms <= mu.response_time_critical_ms THEN '🟡 Warning'\n        ELSE '🔴 Critical'\n    END as performance_status,\n    mu.check_ssl_expiry as ssl_monitoring_enabled,\n    mu.ssl_expires_at,\n    CASE \n        WHEN mu.check_ssl_expiry = FALSE THEN 'Not Monitored'\n        WHEN mu.ssl_expires_at IS NULL THEN 'Unknown'\n        WHEN mu.ssl_expires_at <= NOW() THEN '🔴 Expired'\n        WHEN mu.ssl_expires_at <= DATE_ADD(NOW(), INTERVAL mu.ssl_days_warning DAY) THEN '🟡 Expiring Soon'\n        ELSE '🟢 Valid'\n    END as ssl_status,\n    CASE \n        WHEN mu.ssl_expires_at IS NOT NULL THEN DATEDIFF(mu.ssl_expires_at, NOW())\n        ELSE NULL\n    END as ssl_days_remaining,\n    (SELECT COUNT(*) FROM url_alert_groups uag \n     JOIN alert_groups ag ON uag.group_id = ag.id \n     WHERE uag.url_id = mu.id AND uag.is_active = TRUE AND ag.is_active = TRUE) as alert_groups_count,\n    mu.is_active,\n    mu.created_at,\n    mu.updated_at\nFROM monitored_urls mu\nLEFT JOIN health_reports hr ON mu.id = hr.url_id AND hr.checked_at = mu.last_checked_at\nORDER BY \n    mu.is_active DESC,\n    FIELD(mu.priority, 'critical', 'high', 'normal', 'low'),\n    CASE WHEN mu.last_status = 'up' THEN 1 ELSE 0 END,\n    mu.current_failure_count DESC,\n    mu.name;",
+        "options": {}
+      },
+      "id": "create-status-detailed-view",
+      "name": "Create URL Status Detailed View",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1100, 300],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create SLA Report View (30-day rolling)\nCREATE OR REPLACE VIEW sla_report_30day AS\nSELECT \n    mu.id as url_id,\n    mu.name as site_name,\n    mu.url,\n    mu.priority,\n    mu.team_name,\n    COUNT(hr.id) as total_checks,\n    SUM(CASE WHEN hr.status = 'up' THEN 1 ELSE 0 END) as successful_checks,\n    SUM(CASE WHEN hr.status = 'down' THEN 1 ELSE 0 END) as down_checks,\n    SUM(CASE WHEN hr.status = 'error' THEN 1 ELSE 0 END) as error_checks,\n    SUM(CASE WHEN hr.status = 'timeout' THEN 1 ELSE 0 END) as timeout_checks,\n    ROUND((SUM(CASE WHEN hr.status = 'up' THEN 1 ELSE 0 END) * 100.0 / COUNT(hr.id)), 3) as uptime_sla_percent,\n    ROUND(AVG(CASE WHEN hr.status = 'up' THEN hr.response_time_ms END), 2) as avg_response_time_ms,\n    ROUND(MIN(CASE WHEN hr.status = 'up' THEN hr.response_time_ms END), 2) as min_response_time_ms,\n    ROUND(MAX(CASE WHEN hr.status = 'up' THEN hr.response_time_ms END), 2) as max_response_time_ms,\n    CASE \n        WHEN (SUM(CASE WHEN hr.status = 'up' THEN 1 ELSE 0 END) * 100.0 / COUNT(hr.id)) >= 99.9 THEN '🟢 Excellent (99.9%+)'\n        WHEN (SUM(CASE WHEN hr.status = 'up' THEN 1 ELSE 0 END) * 100.0 / COUNT(hr.id)) >= 99.5 THEN '🟡 Good (99.5%+)'\n        WHEN (SUM(CASE WHEN hr.status = 'up' THEN 1 ELSE 0 END) * 100.0 / COUNT(hr.id)) >= 99.0 THEN '🟠 Fair (99.0%+)'\n        ELSE '🔴 Poor (<99.0%)'\n    END as sla_grade,\n    MAX(hr.checked_at) as last_check_time,\n    (SELECT checked_at FROM health_reports hr2 \n     WHERE hr2.url_id = mu.id AND hr2.status != 'up' \n     ORDER BY hr2.checked_at DESC LIMIT 1) as last_incident_time,\n    DATE_SUB(NOW(), INTERVAL 30 DAY) as report_start_date,\n    NOW() as report_end_date\nFROM monitored_urls mu\nLEFT JOIN health_reports hr ON mu.id = hr.url_id \n    AND hr.checked_at > DATE_SUB(NOW(), INTERVAL 30 DAY)\nWHERE mu.is_active = TRUE\nGROUP BY mu.id, mu.name, mu.url, mu.priority, mu.team_name\nHAVING COUNT(hr.id) > 0\nORDER BY uptime_sla_percent ASC, mu.priority DESC;",
+        "options": {}
+      },
+      "id": "create-sla-view",
+      "name": "Create SLA Report View",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1100, 400],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create SSL Certificate Status View\nCREATE OR REPLACE VIEW ssl_certificate_status AS\nSELECT \n    mu.id as url_id,\n    mu.name as site_name,\n    mu.url,\n    mu.priority,\n    mu.team_name,\n    mu.contact_email,\n    mu.check_ssl_expiry as monitoring_enabled,\n    mu.ssl_expires_at as expiry_date,\n    mu.ssl_issuer,\n    mu.ssl_last_checked,\n    CASE \n        WHEN mu.check_ssl_expiry = FALSE THEN 'Not Monitored'\n        WHEN mu.ssl_expires_at IS NULL THEN 'Unknown'\n        WHEN mu.ssl_expires_at <= NOW() THEN 'Expired'\n        ELSE 'Valid'\n    END as ssl_status,\n    CASE \n        WHEN mu.ssl_expires_at IS NOT NULL THEN DATEDIFF(mu.ssl_expires_at, NOW())\n        ELSE NULL\n    END as days_until_expiry,\n    CASE \n        WHEN mu.check_ssl_expiry = FALSE THEN '⚪ Not Monitored'\n        WHEN mu.ssl_expires_at IS NULL THEN '❓ Unknown'\n        WHEN mu.ssl_expires_at <= NOW() THEN '🔴 Expired'\n        WHEN mu.ssl_expires_at <= DATE_ADD(NOW(), INTERVAL 7 DAY) THEN '🔴 Critical (≤7 days)'\n        WHEN mu.ssl_expires_at <= DATE_ADD(NOW(), INTERVAL mu.ssl_days_warning DAY) THEN '🟡 Warning'\n        ELSE '🟢 Valid'\n    END as ssl_status_display,\n    CASE \n        WHEN mu.check_ssl_expiry = TRUE \n             AND mu.ssl_expires_at <= DATE_ADD(NOW(), INTERVAL mu.ssl_days_warning DAY)\n             AND EXISTS (SELECT 1 FROM url_alert_groups uag \n                        WHERE uag.url_id = mu.id \n                        AND uag.alert_on_ssl_expiry = TRUE \n                        AND uag.is_active = TRUE) THEN 'Alerting Enabled'\n        WHEN mu.check_ssl_expiry = TRUE THEN 'Monitoring Only'\n        ELSE 'Not Monitored'\n    END as alert_configuration\nFROM monitored_urls mu\nWHERE mu.is_active = TRUE\nORDER BY \n    CASE WHEN mu.check_ssl_expiry = TRUE THEN 0 ELSE 1 END,\n    mu.ssl_expires_at ASC,\n    FIELD(mu.priority, 'critical', 'high', 'normal', 'low'),\n    mu.name;",
+        "options": {}
+      },
+      "id": "create-ssl-view",
+      "name": "Create SSL Certificate View",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1100, 500],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Team Performance Summary View\nCREATE OR REPLACE VIEW team_performance_summary AS\nSELECT \n    COALESCE(mu.team_name, 'Unassigned') as team_name,\n    COUNT(*) as total_sites,\n    SUM(CASE WHEN mu.last_status = 'up' THEN 1 ELSE 0 END) as sites_up,\n    SUM(CASE WHEN mu.last_status = 'down' THEN 1 ELSE 0 END) as sites_down,\n    SUM(CASE WHEN mu.last_status = 'error' THEN 1 ELSE 0 END) as sites_error,\n    SUM(CASE WHEN mu.last_status = 'timeout' THEN 1 ELSE 0 END) as sites_timeout,\n    ROUND(AVG(\n        (SELECT (SUM(CASE WHEN hr.status = 'up' THEN 1 ELSE 0 END) * 100.0 / COUNT(hr.id))\n         FROM health_reports hr \n         WHERE hr.url_id = mu.id \n         AND hr.checked_at > DATE_SUB(NOW(), INTERVAL 30 DAY))\n    ), 2) as team_avg_uptime_30d,\n    ROUND(AVG(\n        (SELECT AVG(hr.response_time_ms)\n         FROM health_reports hr \n         WHERE hr.url_id = mu.id \n         AND hr.status = 'up'\n         AND hr.checked_at > DATE_SUB(NOW(), INTERVAL 7 DAY))\n    ), 2) as team_avg_response_time_7d,\n    (SELECT COUNT(*) \n     FROM alert_history ah \n     WHERE ah.url_id IN (SELECT id FROM monitored_urls WHERE team_name = mu.team_name)\n     AND ah.sent_at > DATE_SUB(NOW(), INTERVAL 7 DAY)) as team_alerts_7d,\n    SUM(CASE WHEN mu.priority = 'critical' THEN 1 ELSE 0 END) as critical_sites,\n    SUM(CASE WHEN mu.priority = 'high' THEN 1 ELSE 0 END) as high_sites,\n    SUM(CASE WHEN mu.priority = 'normal' THEN 1 ELSE 0 END) as normal_sites,\n    SUM(CASE WHEN mu.priority = 'low' THEN 1 ELSE 0 END) as low_sites,\n    ROUND((SUM(CASE WHEN mu.last_status = 'up' THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as team_health_score\nFROM monitored_urls mu\nWHERE mu.is_active = TRUE\nGROUP BY COALESCE(mu.team_name, 'Unassigned')\nORDER BY team_health_score DESC, team_avg_uptime_30d DESC;",
+        "options": {}
+      },
+      "id": "create-team-view",
+      "name": "Create Team Performance View",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1100, 600],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Executive Dashboard View\nCREATE OR REPLACE VIEW executive_dashboard AS\nSELECT \n    'System Overview' as metric_category,\n    (SELECT COUNT(*) FROM monitored_urls WHERE is_active = TRUE) as total_monitored_sites,\n    (SELECT COUNT(*) FROM monitored_urls WHERE is_active = TRUE AND last_status = 'up') as sites_operational,\n    (SELECT COUNT(*) FROM monitored_urls WHERE is_active = TRUE AND current_failure_count >= failure_threshold) as sites_in_alert,\n    (SELECT COUNT(*) FROM monitored_urls WHERE is_active = TRUE AND priority = 'critical' AND last_status != 'up') as critical_sites_down,\n    (SELECT ROUND(AVG(uptime_sla_percent), 2) FROM sla_report_30day) as overall_sla_30d,\n    (SELECT ROUND(AVG(uptime_sla_percent), 2) FROM sla_report_30day WHERE priority = 'critical') as critical_sla_30d,\n    (SELECT ROUND(AVG(avg_response_time_ms), 2) FROM sla_report_30day) as avg_response_time_30d,\n    (SELECT COUNT(*) FROM alert_history WHERE sent_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)) as alerts_24h,\n    (SELECT COUNT(*) FROM alert_history WHERE sent_at > DATE_SUB(NOW(), INTERVAL 7 DAY)) as alerts_7d,\n    (SELECT COUNT(*) FROM ssl_certificate_status WHERE monitoring_enabled = TRUE) as ssl_monitored_sites,\n    (SELECT COUNT(*) FROM ssl_certificate_status WHERE ssl_status = 'Expired' OR ssl_status_display LIKE '%Critical%') as ssl_critical_sites,\n    (SELECT COUNT(DISTINCT team_name) FROM monitored_urls WHERE is_active = TRUE AND team_name IS NOT NULL) as active_teams,\n    NOW() as report_generated_at;",
+        "options": {}
+      },
+      "id": "create-executive-view",
+      "name": "Create Executive Dashboard View",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1100, 700],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Enhanced Stored Procedures\nDROP PROCEDURE IF EXISTS CleanOldHealthReports;\nDROP PROCEDURE IF EXISTS UpdateSSLCertificateInfo;\nDROP PROCEDURE IF EXISTS UpdatePerformanceStatus;\n\nDELIMITER //\n\n-- Enhanced Cleanup Procedure with Better Performance\nCREATE PROCEDURE CleanOldHealthReports()\nBEGIN\n    DECLARE retention_days INT DEFAULT 90;\n    DECLARE cleanup_batch_size INT DEFAULT 1000;\n    DECLARE total_deleted INT DEFAULT 0;\n    DECLARE batch_deleted INT DEFAULT 0;\n    DECLARE done INT DEFAULT FALSE;\n    \n    -- Get retention settings from config\n    SELECT CAST(config_value AS UNSIGNED) INTO retention_days \n    FROM config WHERE config_key = 'data_retention_days' LIMIT 1;\n    \n    SELECT CAST(config_value AS UNSIGNED) INTO cleanup_batch_size \n    FROM config WHERE config_key = 'cleanup_batch_size' LIMIT 1;\n    \n    -- Create temporary summary table\n    DROP TEMPORARY TABLE IF EXISTS cleanup_summary;\n    CREATE TEMPORARY TABLE cleanup_summary (\n        phase VARCHAR(20),\n        total_health_reports INT,\n        total_alert_history INT,\n        old_health_reports INT,\n        old_alert_history INT,\n        retention_days INT,\n        timestamp TIMESTAMP\n    );\n    \n    -- Record before cleanup stats\n    INSERT INTO cleanup_summary \n    SELECT \n        'Before Cleanup' as phase,\n        (SELECT COUNT(*) FROM health_reports) as total_health_reports,\n        (SELECT COUNT(*) FROM alert_history) as total_alert_history,\n        (SELECT COUNT(*) FROM health_reports \n         WHERE checked_at < DATE_SUB(NOW(), INTERVAL retention_days DAY)) as old_health_reports,\n        (SELECT COUNT(*) FROM alert_history \n         WHERE sent_at < DATE_SUB(NOW(), INTERVAL retention_days DAY)) as old_alert_history,\n        retention_days as retention_days,\n        NOW() as timestamp;\n    \n    -- Delete old health reports in batches\n    REPEAT\n        DELETE FROM health_reports \n        WHERE checked_at < DATE_SUB(NOW(), INTERVAL retention_days DAY)\n        LIMIT cleanup_batch_size;\n        \n        SET batch_deleted = ROW_COUNT();\n        SET total_deleted = total_deleted + batch_deleted;\n    UNTIL batch_deleted = 0 END REPEAT;\n    \n    -- Delete old alert history in batches\n    SET batch_deleted = 1;\n    WHILE batch_deleted > 0 DO\n        DELETE FROM alert_history \n        WHERE sent_at < DATE_SUB(NOW(), INTERVAL retention_days DAY)\n        LIMIT cleanup_batch_size;\n        \n        SET batch_deleted = ROW_COUNT();\n    END WHILE;\n    \n    -- Record after cleanup stats\n    INSERT INTO cleanup_summary\n    SELECT \n        'After Cleanup' as phase,\n        (SELECT COUNT(*) FROM health_reports) as total_health_reports,\n        (SELECT COUNT(*) FROM alert_history) as total_alert_history,\n        0 as old_health_reports,\n        0 as old_alert_history,\n        retention_days as retention_days,\n        NOW() as timestamp;\n    \n    -- Return cleanup summary\n    SELECT * FROM cleanup_summary;\n    \n    -- Clean up temporary table\n    DROP TEMPORARY TABLE cleanup_summary;\n    \n    -- Return total deleted count\n    SELECT total_deleted as total_health_reports_deleted;\nEND //\n\n-- SSL Certificate Update Procedure\nCREATE PROCEDURE UpdateSSLCertificateInfo(\n    IN p_url_id INT,\n    IN p_ssl_expires_at DATETIME,\n    IN p_ssl_issuer VARCHAR(255),\n    IN p_ssl_valid BOOLEAN\n)\nBEGIN\n    DECLARE ssl_monitoring_enabled BOOLEAN DEFAULT FALSE;\n    \n    -- Check if SSL monitoring is enabled for this URL\n    SELECT check_ssl_expiry INTO ssl_monitoring_enabled\n    FROM monitored_urls \n    WHERE id = p_url_id LIMIT 1;\n    \n    -- Update SSL information\n    UPDATE monitored_urls \n    SET \n        ssl_expires_at = p_ssl_expires_at,\n        ssl_issuer = p_ssl_issuer,\n        ssl_last_checked = NOW()\n    WHERE id = p_url_id;\n    \n    -- Log SSL status in health report if monitoring is enabled\n    IF ssl_monitoring_enabled = TRUE THEN\n        INSERT INTO health_reports (\n            url_id, \n            status, \n            ssl_valid, \n            ssl_expires_in_days, \n            ssl_error,\n            checked_at\n        ) VALUES (\n            p_url_id,\n            CASE WHEN p_ssl_valid THEN 'up' ELSE 'error' END,\n            p_ssl_valid,\n            CASE WHEN p_ssl_expires_at IS NOT NULL \n                 THEN DATEDIFF(p_ssl_expires_at, NOW()) \n                 ELSE NULL END,\n            CASE WHEN p_ssl_valid = FALSE THEN 'SSL Certificate Invalid' ELSE NULL END,\n            NOW()\n        );\n    END IF;\nEND //\n\n-- Performance Status Update Procedure\nCREATE PROCEDURE UpdatePerformanceStatus(\n    IN p_url_id INT,\n    IN p_response_time_ms INT\n)\nBEGIN\n    DECLARE warning_threshold INT DEFAULT 5000;\n    DECLARE critical_threshold INT DEFAULT 10000;\n    DECLARE perf_status ENUM('excellent', 'good', 'warning', 'critical');\n    \n    -- Get thresholds for this URL\n    SELECT response_time_warning_ms, response_time_critical_ms \n    INTO warning_threshold, critical_threshold\n    FROM monitored_urls \n    WHERE id = p_url_id LIMIT 1;\n    \n    -- Determine performance status\n    IF p_response_time_ms <= warning_threshold THEN\n        SET perf_status = 'excellent';\n    ELSEIF p_response_time_ms <= critical_threshold THEN\n        SET perf_status = 'warning';\n    ELSE\n        SET perf_status = 'critical';\n    END IF;\n    \n    -- Update the latest health report with performance status\n    UPDATE health_reports \n    SET performance_status = perf_status\n    WHERE url_id = p_url_id \n    AND checked_at = (\n        SELECT MAX(checked_at) FROM (\n            SELECT checked_at FROM health_reports \n            WHERE url_id = p_url_id\n        ) as latest\n    )\n    LIMIT 1;\nEND //\n\nDELIMITER ;",
+        "options": {}
+      },
+      "id": "create-procedures",
+      "name": "Create Enhanced Procedures",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1100, 800],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Performance Indexes\nCREATE INDEX IF NOT EXISTS idx_health_reports_performance ON health_reports(performance_status, checked_at);\nCREATE INDEX IF NOT EXISTS idx_health_reports_ssl ON health_reports(ssl_valid, ssl_expires_in_days);\nCREATE INDEX IF NOT EXISTS idx_monitored_urls_ssl_expiry ON monitored_urls(ssl_expires_at, check_ssl_expiry);\nCREATE INDEX IF NOT EXISTS idx_alert_history_severity ON alert_history(severity, sent_at);",
+        "options": {}
+      },
+      "id": "create-performance-indexes",
+      "name": "Create Performance Indexes",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1420, 400],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Final Setup Verification and Summary\nSELECT \n    'Enhanced Database Setup Complete!' as status,\n    (SELECT COUNT(*) FROM information_schema.tables \n     WHERE table_schema = DATABASE()) as total_tables,\n    (SELECT COUNT(*) FROM information_schema.views \n     WHERE table_schema = DATABASE()) as total_views,\n    (SELECT COUNT(*) FROM config) as config_entries,\n    (SELECT COUNT(*) FROM monitored_urls) as sample_urls,\n    (SELECT COUNT(*) FROM alert_groups) as alert_groups,\n    (SELECT COUNT(*) FROM alert_group_members) as alert_members,\n    (SELECT COUNT(*) FROM url_alert_groups) as url_group_links,\n    NOW() as setup_completed_at;",
+        "options": {}
+      },
+      "id": "verify-enhanced-setup",
+      "name": "Verify Enhanced Setup",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1420, 600],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\n\nconsole.log('===== ENHANCED HEALTH CHECK DATABASE SETUP COMPLETE =====');\nconsole.log(`Status: ${result.status}`);\nconsole.log(`Total Tables: ${result.total_tables}`);\nconsole.log(`Total Views: ${result.total_views}`);\nconsole.log(`Config Entries: ${result.config_entries}`);\nconsole.log(`Sample URLs: ${result.sample_urls}`);\nconsole.log(`Alert Groups: ${result.alert_groups}`);\nconsole.log(`Alert Members: ${result.alert_members}`);\nconsole.log(`URL-Group Links: ${result.url_group_links}`);\nconsole.log(`Setup Completed: ${result.setup_completed_at}`);\nconsole.log('');\nconsole.log('🎉 SUCCESS! Enhanced database is ready for health monitoring.');\nconsole.log('');\nconsole.log('✨ NEW FEATURES ADDED:');\nconsole.log('• Security: Authentication headers, custom headers, SSL validation');\nconsole.log('• SSL Monitoring: Certificate expiration tracking and alerts');\nconsole.log('• Performance: Response time thresholds and classification');\nconsole.log('• Enhanced Alerts: Performance and SSL alerts, escalation levels');\nconsole.log('• Maintenance Windows: Scheduled maintenance with alert suppression');\nconsole.log('• Team Management: Team-based organization and reporting');\nconsole.log('');\nconsole.log('📊 MONITORING VIEWS CREATED:');\nconsole.log('• dashboard_overview - Executive summary dashboard');\nconsole.log('• url_status_detailed - Comprehensive URL status');\nconsole.log('• sla_report_30day - 30-day SLA performance report');\nconsole.log('• ssl_certificate_status - SSL certificate monitoring');\nconsole.log('• team_performance_summary - Team-based performance metrics');\nconsole.log('• executive_dashboard - High-level system overview');\nconsole.log('');\nconsole.log('🚀 NEXT STEPS:');\nconsole.log('1. Update alert group member emails with real addresses');\nconsole.log('2. Add your own URLs to monitor with enhanced features');\nconsole.log('3. Configure SMTP credentials for email alerts');\nconsole.log('4. Set up SSL monitoring for HTTPS endpoints');\nconsole.log('5. Configure performance thresholds for your applications');\nconsole.log('6. Import and activate the enhanced monitoring workflow');\nconsole.log('7. Create a reporting website using the monitoring views');\nconsole.log('');\nconsole.log('📋 VIEW USAGE EXAMPLES:');\nconsole.log('Dashboard Overview: SELECT * FROM dashboard_overview;');\nconsole.log('Site Status: SELECT * FROM url_status_detailed;');\nconsole.log('SLA Report: SELECT * FROM sla_report_30day;');\nconsole.log('SSL Status: SELECT * FROM ssl_certificate_status;');\nconsole.log('Team Report: SELECT * FROM team_performance_summary;');\n\nreturn {\n  json: {\n    setup_status: 'ENHANCED_SUCCESS',\n    total_tables: result.total_tables,\n    total_views: result.total_views,\n    total_records: result.config_entries + result.sample_urls + result.alert_groups + result.alert_members + result.url_group_links,\n    setup_time: result.setup_completed_at,\n    features_added: [\n      'Security Authentication',\n      'SSL Certificate Monitoring',\n      'Performance Thresholds',\n      'Enhanced Alerting',\n      'Maintenance Windows',\n      'Team Management',\n      'Comprehensive Reporting Views'\n    ],\n    monitoring_views: [\n      'dashboard_overview',\n      'url_status_detailed',\n      'sla_report_30day',\n      'ssl_certificate_status',\n      'team_performance_summary',\n      'executive_dashboard'\n    ]\n  }\n};"
+      },
+      "id": "enhanced-setup-summary",
+      "name": "Enhanced Setup Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 800]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Create Config Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Config Table": {
+      "main": [
+        [
+          {
+            "node": "Create Enhanced URLs Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Enhanced URLs Table": {
+      "main": [
+        [
+          {
+            "node": "Create Enhanced Reports Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Enhanced Reports Table": {
+      "main": [
+        [
+          {
+            "node": "Create Enhanced Alert Groups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Enhanced Alert Groups": {
+      "main": [
+        [
+          {
+            "node": "Create Enhanced Group Members",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Enhanced Group Members": {
+      "main": [
+        [
+          {
+            "node": "Create Enhanced URL Groups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Enhanced URL Groups": {
+      "main": [
+        [
+          {
+            "node": "Create Enhanced Alerts Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Enhanced Alerts Table": {
+      "main": [
+        [
+          {
+            "node": "Create Maintenance Tables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Maintenance Tables": {
+      "main": [
+        [
+          {
+            "node": "Insert Enhanced Config Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Enhanced Config Data": {
+      "main": [
+        [
+          {
+            "node": "Insert Enhanced Sample URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Enhanced Sample URLs": {
+      "main": [
+        [
+          {
+            "node": "Insert Enhanced Alert Groups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Enhanced Alert Groups": {
+      "main": [
+        [
+          {
+            "node": "Insert Enhanced Group Members",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Enhanced Group Members": {
+      "main": [
+        [
+          {
+            "node": "Link URLs to Enhanced Groups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link URLs to Enhanced Groups": {
+      "main": [
+        [
+          {
+            "node": "Create Dashboard Overview View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Dashboard Overview View": {
+      "main": [
+        [
+          {
+            "node": "Create URL Status Detailed View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create URL Status Detailed View": {
+      "main": [
+        [
+          {
+            "node": "Create SLA Report View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SLA Report View": {
+      "main": [
+        [
+          {
+            "node": "Create SSL Certificate View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SSL Certificate View": {
+      "main": [
+        [
+          {
+            "node": "Create Team Performance View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Team Performance View": {
+      "main": [
+        [
+          {
+            "node": "Create Executive Dashboard View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Executive Dashboard View": {
+      "main": [
+        [
+          {
+            "node": "Create Enhanced Procedures",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Enhanced Procedures": {
+      "main": [
+        [
+          {
+            "node": "Create Performance Indexes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Performance Indexes": {
+      "main": [
+        [
+          {
+            "node": "Verify Enhanced Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Enhanced Setup": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Setup Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "enhanced-monitoring",
+      "name": "enhanced-monitoring"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "enhanced-setup-v2"
+}url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    INDEX idx_url_checked (url_id, checked_at),\n    INDEX idx_checked_at (checked_at),\n    INDEX idx_status_time (status, checked_at),\n    INDEX idx_performance (performance_status, checked_at),\n    INDEX idx_ssl_status (ssl_valid, checked_at)\n);",
+        "options": {}
+      },
+      "id": "create-reports-table",
+      "name": "Create Enhanced Reports Table",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 400],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Enhanced Alert Groups Table\nCREATE TABLE IF NOT EXISTS alert_groups (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    group_name VARCHAR(100) UNIQUE NOT NULL,\n    description TEXT,\n    escalation_level ENUM('primary', 'secondary', 'executive') DEFAULT 'primary',\n    business_hours_only BOOLEAN DEFAULT FALSE,\n    timezone VARCHAR(50) DEFAULT 'UTC',\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    INDEX idx_escalation (escalation_level),\n    INDEX idx_active (is_active)\n);",
+        "options": {}
+      },
+      "id": "create-alert-groups-table",
+      "name": "Create Enhanced Alert Groups",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 500],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Enhanced Alert Group Members Table\nCREATE TABLE IF NOT EXISTS alert_group_members (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    group_id INT NOT NULL,\n    notification_type ENUM('email', 'sms', 'telegram', 'webhook', 'slack', 'teams') NOT NULL,\n    destination VARCHAR(255) NOT NULL,\n    member_name VARCHAR(100),\n    role VARCHAR(50) COMMENT 'Team role of the member',\n    priority INT DEFAULT 1 COMMENT 'Notification priority within group',\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (group_id) REFERENCES alert_groups(id) ON DELETE CASCADE,\n    INDEX idx_group_type (group_id, notification_type),\n    INDEX idx_group_active (group_id, is_active),\n    INDEX idx_priority (priority)\n);",
+        "options": {}
+      },
+      "id": "create-group-members-table",
+      "name": "Create Enhanced Group Members",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [460, 600],
+      "credentials": {
+        "mySql": {
+          "id": "mysql_healthcheck_db",
+          "name": "MySQL Health Check DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create Enhanced URL Alert Groups Table\nCREATE TABLE IF NOT EXISTS url_alert_groups (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    url_id INT NOT NULL,\n    group_id INT NOT NULL,\n    alert_on_down BOOLEAN DEFAULT TRUE,\n    alert_on_up BOOLEAN DEFAULT TRUE,\n    alert_on_timeout BOOLEAN DEFAULT TRUE,\n    alert_on_error BOOLEAN DEFAULT TRUE,\n    alert_on_ssl_expiry BOOLEAN DEFAULT FALSE,\n    alert_on_performance_warning BOOLEAN DEFAULT FALSE,\n    alert_on_performance_critical BOOLEAN DEFAULT TRUE,\n    is_active BOOLEAN DEFAULT TRUE,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (url_id) REFERENCES monitored_urls(id) ON DELETE CASCADE,\n    FOREIGN KEY (
