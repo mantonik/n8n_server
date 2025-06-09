@@ -47,11 +47,40 @@ gzip ~/log/n8n.${DT}.log
 find ~/log -name "n8n*.log.gz" -mtime +10 -exec rm {} \; 
 find ~/log -name "n8n*.log" -mtime +10 -exec rm {} \; 
 
+#inital configuration which was working for several months 
+#nohup docker run -it --rm \
+#    --name n8n \
+#    -p 5678:5678 \
+#    -e  WEBHOOK_URL=https://dmseo03.dmcloudarchitect.com \
+#    -v n8n_data:/home/node/.n8n \
+#    -e N8N_EMAIL_MODE=smtp \
+#    -e N8N_SMTP_HOST=${SMTP_HOST} \
+#    -e N8N_SMTP_PORT=${SMTP_PORT} \
+#    -e N8N_SMTP_USER=${SMTP_USER} \
+#    -e N8N_SMTP_PASS=${SMTP_API_KEY} \
+#    -e N8N_SMTP_SENDER=${SMTP_SENDER} \
+#    -e N8N_LOG_OUTPUT=console,file \
+#    -e N8N_LOG_LEVEL=info \
+#    -e N8N_LOG_FILE_SIZE_MAX=50 \
+#    -e N8N_LOG_FILE_MAXCOUNT=60 \
+#    -e N8N_SMTP_SSL=true \
+#    -e N8N_DEFAULT_BINARY_DATA_MODE=filesystem \
+#    -e EXECUTIONS_DATA_SAVE_ON_SUCCESS=none \
+#    -e EXECUTIONS_DATA_SAVE_ON_ERROR=all \
+#    -e EXECUTIONS_DATA_SAVE_ON_PROGRESS=true \
+#    -e EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true \
+#    -e EXECUTIONS_DATA_PRUNE=true \
+#    -e EXECUTIONS_DATA_MAX_AGE=24 \
+#    docker.n8n.io/n8nio/n8n > $HOME/log/n8n.log 2>&1 &
+
+
+
 nohup docker run -it --rm \
     --name n8n \
     -p 5678:5678 \
-    -e  WEBHOOK_URL=https://dmseo03.dmcloudarchitect.com:443/ \
-    -e N8N_EDITOR_BASE_URL=https://dmseo03.dmcloudarchitect.com:443 \
+    -e N8N_HOST=dmseo03.dmcloudarchitect.com \
+    -e WEBHOOK_URL=https://dmseo03.dmcloudarchitect.com \
+    -e N8N_EDITOR_BASE_URL=https://dmseo03.dmcloudarchitect.com \
     -v n8n_data:/home/node/.n8n \
     -e N8N_EMAIL_MODE=smtp \
     -e N8N_SMTP_HOST=${SMTP_HOST} \
