@@ -2,6 +2,8 @@
 # 12/13/24 add prune command
 # 12/13/24 MA add log location, and rotate log on start 
 # 3/1/2025 MA remove execution saved data to reduce storage
+# 6/8/2025 MA update startup script as we are getting invalid origin/expected error 
+#
 #
 # load profile 
 . /etc/profile 
@@ -83,6 +85,7 @@ nohup docker run -it --rm \
     -e N8N_PROTOCOL=https \
     -e WEBHOOK_URL=https://dmseo03.dmcloudarchitect.com \
     -e N8N_EDITOR_BASE_URL=https://dmseo03.dmcloudarchitect.com \
+    -e N8N_SECURE_COOKIE=false \
     -v n8n_data:/home/node/.n8n \
     -e N8N_EMAIL_MODE=smtp \
     -e N8N_SMTP_HOST=${SMTP_HOST} \
