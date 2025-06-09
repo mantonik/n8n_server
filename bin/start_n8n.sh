@@ -50,7 +50,8 @@ find ~/log -name "n8n*.log" -mtime +10 -exec rm {} \;
 nohup docker run -it --rm \
     --name n8n \
     -p 5678:5678 \
-    -e  WEBHOOK_URL=https://dmseo03.dmcloudarchitect.com/ \
+    -e  WEBHOOK_URL=https://dmseo03.dmcloudarchitect.com:443/ \
+    -e N8N_EDITOR_BASE_URL=https://dmseo03.dmcloudarchitect.com:443 \
     -v n8n_data:/home/node/.n8n \
     -e N8N_EMAIL_MODE=smtp \
     -e N8N_SMTP_HOST=${SMTP_HOST} \
@@ -70,6 +71,7 @@ nohup docker run -it --rm \
     -e EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true \
     -e EXECUTIONS_DATA_PRUNE=true \
     -e EXECUTIONS_DATA_MAX_AGE=24 \
+    -e N8N_DISABLE_UI_RESTRICTIONS=true \
     docker.n8n.io/n8nio/n8n > $HOME/log/n8n.log 2>&1 &
 
 echo "Docker started"
