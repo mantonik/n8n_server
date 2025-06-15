@@ -1,0 +1,352 @@
+{
+  "name": "5 Alarm BBQ Voice Agent - Catering Bookings",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "voice-webhook",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-voice-trigger",
+      "name": "Voice Call Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "voice-agent-bbq"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract call information from voice platform webhook\nconst callData = items[0].json;\n\n// Initialize conversation context\nconst context = {\n  callId: callData.call?.id || 'unknown',\n  customerPhone: callData.call?.customer?.number || '',\n  timestamp: new Date().toISOString(),\n  conversationStage: 'greeting',\n  customerInfo: {},\n  cateringDetails: {},\n  availableSlots: []\n};\n\n// Prepare menu information\nconst menuInfo = {\n  packages: {\n    small: {\n      name: \"Small Party Package (10-25 people)\",\n      description: \"Perfect for intimate gatherings\",\n      basePrice: \"$12-15 per person\",\n      includes: [\"Choice of 2 meats\", \"2 sides\", \"Bread\", \"Sauce\", \"Setup\"]\n    },\n    medium: {\n      name: \"Medium Party Package (25-50 people)\",\n      description: \"Great for family reunions and events\", \n      basePrice: \"$11-14 per person\",\n      includes: [\"Choice of 3 meats\", \"3 sides\", \"Bread\", \"Sauce\", \"Setup\", \"Serving utensils\"]\n    },\n    large: {\n      name: \"Large Party Package (50-100 people)\",\n      description: \"Perfect for corporate events\",\n      basePrice: \"$10-13 per person\", \n      includes: [\"Choice of 4 meats\", \"4 sides\", \"Bread\", \"Sauce\", \"Full setup\", \"Serving staff option\"]\n    },\n    xlarge: {\n      name: \"Extra Large Package (100+ people)\",\n      description: \"For big celebrations and events\",\n      basePrice: \"$9-12 per person\",\n      includes: [\"All meat options\", \"5+ sides\", \"Full service\", \"Staff included\", \"Custom setup\"]\n    }\n  },\n  meats: [\"Brisket\", \"Pulled Pork\", \"Ribs\", \"Chicken\", \"Sausage\", \"Turkey\"],\n  sides: [\"Mac & Cheese\", \"Coleslaw\", \"Baked Beans\", \"Potato Salad\", \"Corn\", \"Green Beans\"]\n};\n\nreturn [{\n  json: {\n    context,\n    menuInfo,\n    action: 'process_voice_input'\n  }\n}];"
+      },
+      "id": "init-call-context",
+      "name": "Initialize Call Context",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "greeting_stage",
+              "leftValue": "={{ $json.context.conversationStage }}",
+              "rightValue": "greeting",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "menu_inquiry",
+              "leftValue": "={{ $json.context.conversationStage }}",
+              "rightValue": "menu_inquiry", 
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "package_selection",
+              "leftValue": "={{ $json.context.conversationStage }}",
+              "rightValue": "package_selection",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "booking_details",
+              "leftValue": "={{ $json.context.conversationStage }}",
+              "rightValue": "booking_details",
+              "operator": {
+                "type": "string", 
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "combineOperation": "any"
+      },
+      "id": "conversation-router",
+      "name": "Conversation Stage Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate greeting response\nconst response = {\n  message: \"Hello! Thank you for calling 5 Alarm BBQ! I'm here to help you with catering for your special event. Can you tell me about your upcoming party - how many people are you expecting?\",\n  action: \"collect_party_size\",\n  nextStage: \"menu_inquiry\"\n};\n\nreturn [{\n  json: {\n    ...items[0].json,\n    response,\n    context: {\n      ...items[0].json.context,\n      conversationStage: \"menu_inquiry\"\n    }\n  }\n}];"
+      },
+      "id": "greeting-handler",
+      "name": "Greeting Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process party size and suggest appropriate packages\nconst partySize = parseInt(items[0].json.userInput?.partySize) || 0;\nconst menuInfo = items[0].json.menuInfo;\n\nlet suggestedPackage;\nlet packageKey;\n\nif (partySize <= 25) {\n  packageKey = 'small';\n  suggestedPackage = menuInfo.packages.small;\n} else if (partySize <= 50) {\n  packageKey = 'medium';\n  suggestedPackage = menuInfo.packages.medium;\n} else if (partySize <= 100) {\n  packageKey = 'large';\n  suggestedPackage = menuInfo.packages.large;\n} else {\n  packageKey = 'xlarge';\n  suggestedPackage = menuInfo.packages.xlarge;\n}\n\nconst response = {\n  message: `Perfect! For ${partySize} people, I'd recommend our ${suggestedPackage.name}. This includes ${suggestedPackage.includes.join(', ')} at ${suggestedPackage.basePrice}. \\n\\nWe can also customize this based on your preferences. What type of event is this, and do you have any specific meat or side preferences?`,\n  suggestedPackage,\n  packageKey,\n  action: \"discuss_customization\",\n  nextStage: \"package_selection\"\n};\n\nreturn [{\n  json: {\n    ...items[0].json,\n    response,\n    context: {\n      ...items[0].json.context,\n      conversationStage: \"package_selection\",\n      cateringDetails: {\n        partySize,\n        suggestedPackage: packageKey\n      }\n    }\n  }\n}];"
+      },
+      "id": "menu-inquiry-handler",
+      "name": "Menu Inquiry Handler", 
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Handle package customization and move to booking details\nconst userPreferences = items[0].json.userInput || {};\nconst context = items[0].json.context;\n\nconst response = {\n  message: `Excellent! I've noted your preferences. Now let's get your event details to check availability and complete your booking. \\n\\nCan you please provide:\\n1. Your first and last name\\n2. Your phone number\\n3. Preferred event date\\n4. Event location and if you need delivery\\n5. Any special cooking requirements or dietary restrictions?\\n\\nI'll check our availability as we go.`,\n  action: \"collect_booking_info\",\n  nextStage: \"booking_details\"\n};\n\nreturn [{\n  json: {\n    ...items[0].json,\n    response,\n    context: {\n      ...context,\n      conversationStage: \"booking_details\",\n      cateringDetails: {\n        ...context.cateringDetails,\n        preferences: userPreferences\n      }\n    }\n  }\n}];"
+      },
+      "id": "package-selection-handler",
+      "name": "Package Selection Handler",
+      "type": "n8n-nodes-base.function", 
+      "typeVersion": 1,
+      "position": [900, 420]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process booking details and validate information\nconst userInput = items[0].json.userInput || {};\nconst context = items[0].json.context;\n\n// Extract booking information\nconst bookingData = {\n  firstName: userInput.firstName || '',\n  lastName: userInput.lastName || '',\n  phone: userInput.phone || context.customerPhone,\n  eventDate: userInput.eventDate || '',\n  eventLocation: userInput.eventLocation || '',\n  serviceType: userInput.serviceType || 'pickup',\n  specialRequirements: userInput.specialRequirements || '',\n  address: userInput.address || ''\n};\n\n// Validate required fields\nconst missingFields = [];\nif (!bookingData.firstName) missingFields.push('first name');\nif (!bookingData.lastName) missingFields.push('last name');\nif (!bookingData.phone) missingFields.push('phone number');\nif (!bookingData.eventDate) missingFields.push('event date');\n\nif (missingFields.length > 0) {\n  const response = {\n    message: `I still need a few more details: ${missingFields.join(', ')}. Can you provide those for me?`,\n    action: \"collect_missing_info\",\n    missingFields\n  };\n  \n  return [{\n    json: {\n      ...items[0].json,\n      response\n    }\n  }];\n}\n\n// All information collected - move to availability check\nconst response = {\n  message: `Perfect! Let me check our availability for ${bookingData.eventDate} and prepare your booking summary.`,\n  action: \"check_availability\",\n  nextStage: \"availability_check\",\n  bookingData\n};\n\nreturn [{\n  json: {\n    ...items[0].json,\n    response,\n    context: {\n      ...context,\n      conversationStage: \"availability_check\",\n      customerInfo: bookingData,\n      cateringDetails: {\n        ...context.cateringDetails,\n        bookingData\n      }\n    }\n  }\n}];"
+      },
+      "id": "booking-details-handler",
+      "name": "Booking Details Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 540]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Check availability against existing bookings\nconst bookingData = items[0].json.context.customerInfo;\nconst requestedDate = new Date(bookingData.eventDate);\nconst today = new Date();\n\n// Check if date is in the future\nif (requestedDate <= today) {\n  return [{\n    json: {\n      ...items[0].json,\n      availabilityResult: {\n        available: false,\n        reason: \"past_date\",\n        message: \"I notice that date has already passed. Could you provide a future date for your event?\"\n      }\n    }\n  }];\n}\n\n// Check if date is too soon (less than 1 week)\nconst daysDifference = Math.ceil((requestedDate - today) / (1000 * 60 * 60 * 24));\nif (daysDifference < 7) {\n  return [{\n    json: {\n      ...items[0].json,\n      availabilityResult: {\n        available: true,\n        warning: \"short_notice\",\n        message: \"That's quite soon! We can usually accommodate short notice, but I'll need to have our catering manager confirm availability. \",\n        daysDifference\n      }\n    }\n  }];\n}\n\n// Simulate checking for conflicts (in real implementation, query your database)\nconst isAvailable = Math.random() > 0.1; // 90% chance available\n\nif (isAvailable) {\n  return [{\n    json: {\n      ...items[0].json,\n      availabilityResult: {\n        available: true,\n        message: \"Great news! We have availability for your requested date.\",\n        daysDifference\n      }\n    }\n  }];\n} else {\n  return [{\n    json: {\n      ...items[0].json,\n      availabilityResult: {\n        available: false,\n        reason: \"booked\",\n        message: \"I'm sorry, but we already have a booking for that date. Let me suggest some alternative dates around that time.\"\n      }\n    }\n  }];\n}"
+      },
+      "id": "availability-checker",
+      "name": "Availability Checker",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "available",
+              "leftValue": "={{ $json.availabilityResult.available }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "availability-check",
+      "name": "Availability Check",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate booking confirmation summary\nconst context = items[0].json.context;\nconst customerInfo = context.customerInfo;\nconst cateringDetails = context.cateringDetails;\nconst menuInfo = items[0].json.menuInfo;\nconst availabilityResult = items[0].json.availabilityResult;\n\n// Get package details\nconst packageInfo = menuInfo.packages[cateringDetails.suggestedPackage] || menuInfo.packages.medium;\n\n// Create booking summary\nconst bookingSummary = {\n  customer: {\n    name: `${customerInfo.firstName} ${customerInfo.lastName}`,\n    phone: customerInfo.phone,\n    email: customerInfo.email || ''\n  },\n  event: {\n    date: customerInfo.eventDate,\n    partySize: cateringDetails.partySize,\n    location: customerInfo.eventLocation,\n    serviceType: customerInfo.serviceType,\n    address: customerInfo.address\n  },\n  catering: {\n    package: packageInfo.name,\n    estimatedCost: packageInfo.basePrice,\n    specialRequirements: customerInfo.specialRequirements\n  },\n  bookingId: `BBQ-${Date.now()}`,\n  status: 'pending_confirmation'\n};\n\nlet confirmationMessage = `Perfect! Here's your booking summary:\\n\\n📅 Event Date: ${customerInfo.eventDate}\\n👥 Party Size: ${cateringDetails.partySize} people\\n🍖 Package: ${packageInfo.name}\\n💰 Estimated Cost: ${packageInfo.basePrice}\\n📍 Service: ${customerInfo.serviceType}`;\n\nif (customerInfo.address) {\n  confirmationMessage += `\\n📮 Address: ${customerInfo.address}`;\n}\n\nif (availabilityResult.warning === 'short_notice') {\n  confirmationMessage += `\\n\\n⚠️ Since this is short notice, I'll have our catering manager call you within 2 hours to confirm final details.`;\n} else {\n  confirmationMessage += `\\n\\nI'll have our catering manager call you within 24 hours to finalize all details, discuss final pricing, and confirm your booking.`;\n}\n\nconfirmationMessage += `\\n\\nYour booking reference is: ${bookingSummary.bookingId}\\n\\nIs there anything else I can help you with regarding your catering needs?`;\n\nconst response = {\n  message: confirmationMessage,\n  action: \"booking_confirmed\",\n  bookingSummary\n};\n\nreturn [{\n  json: {\n    ...items[0].json,\n    response,\n    bookingSummary,\n    action: 'create_booking_record'\n  }\n}];"
+      },
+      "id": "booking-confirmation",
+      "name": "Booking Confirmation",
+      "type": "n8n-nodes-base.function", 
+      "typeVersion": 1,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Handle unavailable dates - suggest alternatives\nconst requestedDate = new Date(items[0].json.context.customerInfo.eventDate);\nconst availabilityResult = items[0].json.availabilityResult;\n\n// Generate alternative dates (typically 2-3 options around requested date)\nconst alternatives = [];\nfor (let i = 1; i <= 3; i++) {\n  const altDate = new Date(requestedDate);\n  altDate.setDate(requestedDate.getDate() + (i * 7)); // Add weeks\n  alternatives.push(altDate.toLocaleDateString());\n}\n\nlet message;\nif (availabilityResult.reason === 'past_date') {\n  message = availabilityResult.message;\n} else if (availabilityResult.reason === 'booked') {\n  message = `${availabilityResult.message} Here are some alternative dates that work well: ${alternatives.join(', ')}. Do any of these work for your event?`;\n}\n\nconst response = {\n  message,\n  alternatives,\n  action: \"request_new_date\"\n};\n\nreturn [{\n  json: {\n    ...items[0].json,\n    response\n  }\n}];"
+      },
+      "id": "unavailable-handler",
+      "name": "Unavailable Date Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1560, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\"status\": \"success\", \"message\": $json.response.message, \"bookingId\": $json.bookingSummary?.bookingId, \"action\": $json.response.action, \"timestamp\": $now()}) }}"
+      },
+      "id": "voice-response",
+      "name": "Voice Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Voice Call Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize Call Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Call Context": {
+      "main": [
+        [
+          {
+            "node": "Conversation Stage Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Stage Router": {
+      "main": [
+        [
+          {
+            "node": "Greeting Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menu Inquiry Handler", 
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Package Selection Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Booking Details Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greeting Handler": {
+      "main": [
+        [
+          {
+            "node": "Voice Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Menu Inquiry Handler": {
+      "main": [
+        [
+          {
+            "node": "Voice Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Package Selection Handler": {
+      "main": [
+        [
+          {
+            "node": "Voice Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Details Handler": {
+      "main": [
+        [
+          {
+            "node": "Availability Checker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Availability Checker": {
+      "main": [
+        [
+          {
+            "node": "Availability Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Availability Check": {
+      "main": [
+        [
+          {
+            "node": "Booking Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unavailable Date Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Voice Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unavailable Date Handler": {
+      "main": [
+        [
+          {
+            "node": "Voice Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["bbq", "catering", "voice-agent"],
+  "triggerCount": 0,
+  "updatedAt": "2025-06-14T12:00:00.000Z",
+  "versionId": "1"
+}

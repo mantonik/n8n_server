@@ -1,0 +1,56 @@
+Core Functionality:
+1. What specific tasks should the voice agent handle? (e.g., taking orders, answering menu questions, booking catering, store hours/location info)
+- Lets start from booking catering. It will answer question about available menu, what we sugesting for requested size of the party, what packages do we have, then process to booking catering date and schedule follow call 
+
+2. What voice platform are you planning to use? (e.g., Twilio Voice, Google Dialogflow, Amazon Lex, or a custom solution)
+- I am new for this, that I need sugestion which platform to select and how to build this, Somethign which is not expensive for RND process and testing 
+
+Integration Needs: 
+3. Do you have existing systems that need integration? (POS system, inventory management, CRM, email marketing)
+I have own N8n instalation, GHL for user managment that integration with my account will be good.
+
+4. How do you currently handle orders - through a specific platform, phone system, or manual process?
+manulay throw phone call from user
+
+Order Management: 
+5. For orders, what information do you need to collect? (customer details, pickup/delivery preference, special instructions)
+First/last name, phone number, picup/deliver/cook on side, address if need to be deliver, size of the party, size for cooking and  preparation 
+
+6. Do you need real-time inventory checking, or is it okay to accept orders and handle availability separately?
+yes, we do not handle inventory, important is scheduling and booking that we do not overbook two party at this same time 
+
+Customer Communication: 
+7. Should the system send confirmations via SMS, email, or both?
+I think we can do both, but letst focus on email, SMS if we can find out provider of phone number then we can map to provider email
+
+8. Do you want to capture customer information for marketing purposes?
+yes, we can use GHL for this
+
+Operational Questions: 
+9. What are your business hours, and should the voice agent behave differently outside those hours?
+10. Do you need different workflows for different types of calls (orders vs. general inquiries vs. catering requests)?
+
+
+
+
+
+What's your typical catering lead time? (how far in advance do people usually book?)
+Do you have set catering packages/pricing, or is everything custom quoted?
+What are your business hours for the "outside hours" behavior?
+For GHL integration - do you have your API credentials ready, or do you need help setting that up?
+
+
+
+
+What's your typical catering lead time? (how far in advance do people usually book?)
+week to two weeks, sometimes month
+
+Do you have set catering packages/pricing, or is everything custom quoted?
+Typical set available on page, but we customize per customer need 
+
+What are your business hours for the "outside hours" behavior?
+hours depend from user and party schedule. There is no typical business hours 
+
+For GHL integration - do you have your API credentials ready, or do you need help setting that up?
+I need help to setup 
+
