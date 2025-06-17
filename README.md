@@ -25,8 +25,9 @@ chmod 755 ~/bin/n8n_server/bin/*.sh
 cd /root/bin/n8n_server/bin
 
 #copy nginx files 
-\cp ~/bin/n8n_server/server-config/data/nginx/* /data/nginx
+\cp -r ~/bin/n8n_server/server-config/data/nginx/* /data/nginx
 
+ll /data/nginx/html
 
 chmod 755 ~/bin/n8n_server/bin/*.sh
 crontab ~/bin/n8n_server/cron/root.cron 
