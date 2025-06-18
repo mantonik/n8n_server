@@ -22,12 +22,9 @@ unzip cloudflare.zip
 rm -f cloudflare.zip
 mv n8n_server-cloudflare n8n_server
 chmod 755 ~/bin/n8n_server/bin/*.sh
+
 cd /root/bin/n8n_server/bin
 
-#copy nginx files 
-\cp -r ~/bin/n8n_server/server-config/data/nginx/* /data/nginx
-
-ll /data/nginx/html
 
 chmod 755 ~/bin/n8n_server/bin/*.sh
 crontab ~/bin/n8n_server/cron/root.cron 
@@ -75,3 +72,21 @@ Follow below tutorial to get API key and save a key in file $home/etc/coudflare.
 
 Login to 
 https://developers.cloudflare.com/fundamentals/api/get-started/create-token/
+
+
+-----
+deploy for nginx application changes
+
+
+cd ~/bin
+rm -rf n8n_server
+wget https://github.com/mantonik/n8n_server/archive/refs/heads/cloudflare.zip
+unzip cloudflare.zip 
+rm -f cloudflare.zip
+mv n8n_server-cloudflare n8n_server
+chmod 755 ~/bin/n8n_server/bin/*.sh
+#copy nginx files 
+\cp -r ~/bin/n8n_server/server-config/data/nginx/* /data/nginx
+ll /data/nginx/html/urlcheck/
+chmod 755 /data/nginx/html/urlcheck
+chmod 644 /data/nginx/html/urlcheck/*
