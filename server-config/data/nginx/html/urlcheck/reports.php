@@ -106,7 +106,7 @@ try {
     ");
     
     // Most problematic URLs
-    $problematicUrls = $db->fetchAll("
+    $problematicUrls_v1_delete = $db->fetchAll("
         SELECT 
             mu.name as site_name,
             mu.url,
@@ -127,6 +127,53 @@ try {
         ORDER BY total_alerts_{$dateRange}d DESC, mu.priority DESC
         LIMIT 20
     ");
+
+    // Most problematic URLs - Updated to show currently failing URLs
+    $problematicUrls = $db->fetchAll("
+        SELECT 
+            mu.name as site_name,
+            mu.url,
+            mu.priority,
+            mu.team_name,
+            mu.current_failure_count,
+            mu.failure_threshold,
+            mu.last_status,
+            COALESCE(alert_counts.total_alerts_{$dateRange}d, 0) as total_alerts_{$dateRange}d,
+            COALESCE(alert_counts.down_alerts, 0) as down_alerts,
+            COALESCE(alert_counts.error_alerts, 0) as error_alerts,
+            -- Problem score: failed status + current failures + recent alerts
+            (
+                CASE 
+                    WHEN mu.last_status IN ('down', 'error', 'timeout') THEN 50
+                    ELSE 0 
+                END +
+                (mu.current_failure_count * 10) +
+                COALESCE(alert_counts.total_alerts_{$dateRange}d, 0)
+            ) as problem_score
+        FROM monitored_urls mu
+        LEFT JOIN (
+            SELECT 
+                ah.url_id,
+                COUNT(ah.id) as total_alerts_{$dateRange}d,
+                SUM(CASE WHEN ah.alert_type = 'down' THEN 1 ELSE 0 END) as down_alerts,
+                SUM(CASE WHEN ah.alert_type = 'error' THEN 1 ELSE 0 END) as error_alerts
+            FROM alert_history ah
+            WHERE ah.sent_at > {$dateFilter}
+            GROUP BY ah.url_id
+        ) alert_counts ON mu.id = alert_counts.url_id
+        WHERE mu.is_active = TRUE {$teamFilter} {$priorityFilter}
+        AND (
+            -- Show currently failing URLs
+            mu.last_status IN ('down', 'error', 'timeout') OR
+            -- Show URLs with current failures
+            mu.current_failure_count > 0 OR
+            -- Show URLs with recent alerts
+            alert_counts.total_alerts_{$dateRange}d > 0
+        )
+        ORDER BY problem_score DESC, mu.priority DESC
+        LIMIT 20
+    ");
+
     
     // Get filter options
     $teams = $db->fetchAll("SELECT DISTINCT team_name FROM monitored_urls WHERE is_active = TRUE AND team_name IS NOT NULL ORDER BY team_name");
