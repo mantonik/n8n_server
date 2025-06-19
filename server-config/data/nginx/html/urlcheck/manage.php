@@ -793,5 +793,308 @@ function buildFilterUrl($newParams = []) {
             tags: <?php echo json_encode($tags); ?>
         };
     </script>
+
+
+<!-- Add this <style> block just before the closing </body> tag in manage.php -->
+<style>
+/* Quick fixes for manage.php styling */
+
+/* Search and filter card */
+.card .card-body {
+    background: white;
+    border-radius: 15px;
+}
+
+/* Table improvements */
+.table th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    color: #495057 !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.8rem;
+    border: none !important;
+}
+
+.table td {
+    vertical-align: middle !important;
+    border-color: #f8f9fa !important;
+    padding: 1rem !important;
+}
+
+.table-hover tbody tr:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.03), rgba(118, 75, 162, 0.03)) !important;
+}
+
+/* URL name styling */
+.table td strong {
+    color: #333;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.table td a {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.table td a:hover {
+    color: #5a6fd8;
+    text-decoration: underline;
+}
+
+.table td small {
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 0.5rem 1rem !important;
+    border-radius: 25px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.priority-badge {
+    padding: 0.4rem 0.8rem !important;
+    border-radius: 20px !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Team badges */
+.badge.bg-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1) !important;
+    color: white !important;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Tag badges */
+.badge.bg-light.text-dark {
+    background: rgba(108, 117, 125, 0.1) !important;
+    color: #495057 !important;
+    border: 1px solid rgba(108, 117, 125, 0.2);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-right: 0.25rem;
+}
+
+/* Action buttons */
+.btn-group .btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    min-width: 35px;
+    margin-right: 0.25rem;
+}
+
+.btn-outline-primary {
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.btn-outline-primary:hover {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+}
+
+.btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.btn-outline-secondary {
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    background: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+/* Bulk actions styling */
+.card-body.border-bottom {
+    background: rgba(102, 126, 234, 0.05) !important;
+    border-radius: 15px 15px 0 0 !important;
+}
+
+/* Pagination */
+.card-footer {
+    background: white;
+    border-radius: 0 0 15px 15px;
+    border-top: 1px solid #f8f9fa;
+}
+
+/* Empty state */
+.text-center.py-4 {
+    padding: 3rem 2rem !important;
+    color: #6c757d;
+}
+
+.text-center.py-4 .fas.fa-inbox {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Form controls */
+.form-control, .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+}
+
+/* Tab navigation */
+.nav-tabs .nav-link {
+    border: none;
+    color: #6c757d;
+    font-weight: 600;
+    padding: 1rem 2rem;
+    border-radius: 15px 15px 0 0;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    border: none;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.nav-tabs .nav-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+/* Alert cards for configuration */
+.config-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    margin-bottom: 2rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.config-section h5 {
+    color: #495057;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+}
+
+/* Readonly notice */
+.alert-info {
+    background: linear-gradient(135deg, rgba(23, 162, 184, 0.1), rgba(111, 66, 193, 0.1));
+    border: 1px solid rgba(23, 162, 184, 0.2);
+    border-radius: 15px;
+    color: #0c5460;
+    border-left: 4px solid #17a2b8;
+}
+
+/* Better spacing */
+.py-4 {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+}
+
+.mb-4 {
+    margin-bottom: 2rem !important;
+}
+
+/* Role badge in navbar */
+.navbar .badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+}
+
+.badge.bg-danger {
+    background: linear-gradient(135deg, #dc3545, #e83e8c) !important;
+}
+
+.badge.bg-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1) !important;
+}
+</style>
+
+<!-- Also add this JavaScript to improve functionality -->
+<script>
+// Improve bulk selection
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.url-checkbox');
+    
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = this.checked);
+        });
+    }
+    
+    // Add tooltips to action buttons
+    const actionButtons = document.querySelectorAll('.btn-group .btn');
+    actionButtons.forEach(button => {
+        if (button.querySelector('.fa-edit')) {
+            button.title = 'Edit URL';
+        } else if (button.querySelector('.fa-trash')) {
+            button.title = 'Delete URL';
+        } else if (button.querySelector('.fa-eye')) {
+            button.title = 'View Details';
+        }
+    });
+    
+    // Smooth scroll for pagination
+    const paginationLinks = document.querySelectorAll('.pagination a');
+    paginationLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+});
+
+// Confirm bulk actions
+function confirmBulkAction() {
+    const selected = document.querySelectorAll('.url-checkbox:checked');
+    const action = document.querySelector('select[name="bulk_action"]').value;
+    
+    if (selected.length === 0) {
+        alert('Please select at least one URL');
+        return false;
+    }
+    
+    if (!action) {
+        alert('Please select an action');
+        return false;
+    }
+    
+    return confirm(`Are you sure you want to ${action} ${selected.length} selected URLs?`);
+}
+</script>
 </body>
 </html>
