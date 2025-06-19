@@ -48,7 +48,7 @@ if ($auth->isAuthenticated()) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
 </head>
-<body>
+<body class="login-page">
     <div class="login-container">
         <div class="login-header">
             <i class="fas fa-shield-alt icon-shield"></i>
@@ -73,12 +73,12 @@ if ($auth->isAuthenticated()) {
         <form method="POST" action="login.php">
             <div class="form-floating">
                 <input type="text" class="form-control" id="username" name="username" placeholder="Username" required autocomplete="username">
-                <label for="username"><i class="fas fa-user me-2"></i>Username</label>
+                <label for="username"><i class="fas fa-user"></i>Username</label>
             </div>
             
             <div class="form-floating">
                 <input type="password" class="form-control" id="password" name="password" placeholder="Password" required autocomplete="current-password">
-                <label for="password"><i class="fas fa-lock me-2"></i>Password</label>
+                <label for="password"><i class="fas fa-lock"></i>Password</label>
             </div>
             
             <button type="submit" class="btn btn-primary btn-login">
@@ -192,86 +192,5 @@ if ($auth->isAuthenticated()) {
             });
         });
     </script>
-    
-    <style>
-        .demo-info {
-            margin-top: 2rem;
-            padding: 1.5rem;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            border: 1px solid rgba(102, 126, 234, 0.2);
-            backdrop-filter: blur(5px);
-        }
-        
-        .demo-header {
-            text-align: center;
-            margin-bottom: 1rem;
-            color: #667eea;
-            font-size: 1.1rem;
-        }
-        
-        .demo-accounts {
-            display: grid;
-            gap: 1rem;
-        }
-        
-        .demo-account {
-            background: rgba(248, 249, 250, 0.8);
-            padding: 1rem;
-            border-radius: 10px;
-            border: 1px solid #dee2e6;
-        }
-        
-        .demo-account-header {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-        }
-        
-        .demo-credentials {
-            margin-bottom: 0.5rem;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .demo-credentials code {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-        
-        .demo-label {
-            font-weight: 500;
-            color: #495057;
-        }
-        
-        .demo-features {
-            margin-top: 0.5rem;
-        }
-        
-        .demo-note {
-            text-align: center;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid #dee2e6;
-        }
-        
-        .form-floating {
-            margin-bottom: 1rem;
-        }
-        
-        @media (max-width: 576px) {
-            .demo-info {
-                margin: 1rem;
-                padding: 1rem;
-            }
-            
-            .demo-credentials {
-                font-size: 0.9rem;
-            }
-        }
-    </style>
 </body>
 </html>

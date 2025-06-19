@@ -658,50 +658,206 @@ body {
    24. LOGIN PAGE STYLES
    ===================================================== */
 
-.login-container {
-    max-width: 400px;
-    margin: 5rem auto;
+/* Login page body override */
+body.login-page {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 2rem;
-    background: white;
+}
+
+.login-container {
+    max-width: 450px;
+    width: 100%;
+    padding: 3rem 2.5rem;
+    background: rgba(255, 255, 255, 0.95);
     border-radius: var(--border-radius-lg);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
 .login-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
+}
+
+.login-header .icon-shield {
+    font-size: 4rem;
+    color: #667eea;
+    margin-bottom: 1rem;
+    display: block;
+    text-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
 }
 
 .login-header h1 {
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #333;
     margin-bottom: 0.5rem;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.icon-shield {
-    font-size: 3rem;
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 1rem;
+.login-header p {
+    color: #6c757d;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Login form styling */
+.form-floating {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.form-floating input {
+    height: 3.5rem;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    font-size: 1rem;
+    padding: 1rem 1rem 1rem 3rem;
+    transition: var(--transition);
+    background: rgba(255,255,255,0.8);
+}
+
+.form-floating input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    background: white;
+}
+
+.form-floating label {
+    padding: 1rem 1rem 1rem 3rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.form-floating label i {
+    position: absolute;
+    left: 1rem;
+    color: #6c757d;
 }
 
 .btn-login {
     width: 100%;
     padding: 1rem;
     font-size: 1.1rem;
-    margin-top: 1rem;
+    font-weight: 600;
+    margin: 1.5rem 0;
     background: var(--primary-gradient);
     border: none;
+    border-radius: 12px;
+    color: white;
+    transition: var(--transition);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.public-link, .system-status {
+.btn-login:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a4fb0);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+/* Demo info section */
+.demo-info {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.demo-header {
+    text-align: center;
+    margin-bottom: 1rem;
+    color: #667eea;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.demo-accounts {
+    display: grid;
+    gap: 1rem;
+}
+
+.demo-account {
+    background: rgba(248, 249, 250, 0.8);
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+}
+
+.demo-account-header {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    color: #495057;
+}
+
+.demo-credentials {
+    margin-bottom: 0.5rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
+}
+
+.demo-credentials code {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-family: inherit;
+}
+
+.demo-label {
+    font-weight: 500;
+    color: #495057;
+}
+
+.demo-features {
+    margin-top: 0.5rem;
+}
+
+.demo-note {
+    text-align: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+    font-size: 0.9rem;
+}
+
+.public-link {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+}
+
+.public-link a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: var(--transition);
+    display: inline-block;
+}
+
+.public-link a:hover {
+    background: rgba(102, 126, 234, 0.1);
+    text-decoration: none;
+}
+
+.system-status {
     text-align: center;
     margin-top: 2rem;
     padding: 1rem;
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(40, 167, 69, 0.2);
 }
 
 .status-indicator {
@@ -710,10 +866,393 @@ body {
     justify-content: center;
     gap: 0.5rem;
     color: #28a745;
+    font-weight: 600;
+}
+
+/* Responsive login */
+@media (max-width: 576px) {
+    .login-container {
+        padding: 2rem 1.5rem;
+        margin: 1rem;
+    }
+    
+    .login-header .icon-shield {
+        font-size: 3rem;
+    }
+    
+    .login-header h1 {
+        font-size: 1.5rem;
+    }
 }
 
 /* =====================================================
-   25. FINAL TOUCHES
+   25. MANAGEMENT PAGE SPECIFIC STYLES
+   ===================================================== */
+
+/* Management page header */
+.management-header {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.management-header h2 {
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.management-header .text-muted {
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
+/* Search and filter bar */
+.search-filter-bar {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.search-filter-bar .form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.search-filter-bar .form-control,
+.search-filter-bar .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    font-size: 0.95rem;
+    transition: var(--transition);
+}
+
+.search-filter-bar .form-control:focus,
+.search-filter-bar .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+}
+
+/* Bulk actions bar */
+.bulk-actions-bar {
+    background: rgba(102, 126, 234, 0.05);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.bulk-actions-bar .form-check-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.bulk-actions-bar .form-select {
+    min-width: 200px;
+}
+
+/* URL management table */
+.url-management-table {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+}
+
+.url-management-table .table {
+    margin-bottom: 0;
+}
+
+.url-management-table .table th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.8rem;
+    padding: 1rem;
+    border: none;
+}
+
+.url-management-table .table td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-color: #f8f9fa;
+}
+
+.url-management-table .table tbody tr:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.03), rgba(118, 75, 162, 0.03));
+}
+
+/* URL item styling within table */
+.url-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.url-item .url-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 1rem;
+}
+
+.url-item .url-link {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.url-item .url-link:hover {
+    color: #5a6fd8;
+    text-decoration: underline;
+}
+
+.url-item .url-description {
+    color: #6c757d;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* Team and tags styling */
+.team-tags-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.team-badge {
+    display: inline-block;
+    background: var(--primary-gradient);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.tag-badge {
+    background: rgba(108, 117, 125, 0.1);
+    color: #495057;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+/* Action buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.action-buttons .btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    min-width: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Alert configuration styling */
+.alert-config-section {
+    display: grid;
+    gap: 2rem;
+}
+
+.alert-definition-card {
+    background: rgba(255,255,255,0.9);
+    border: 1px solid #e9ecef;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    transition: var(--transition);
+}
+
+.alert-definition-card:hover {
+    background: white;
+    box-shadow: var(--card-shadow);
+    transform: translateY(-2px);
+}
+
+.alert-definition-header {
+    display: flex;
+    justify-content: between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.alert-definition-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.alert-definition-description {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.alert-definition-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Contact items */
+.contact-item {
+    background: rgba(248,249,250,0.8);
+    border: 1px solid #e9ecef;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: var(--transition);
+}
+
+.contact-item:hover {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+.contact-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.contact-details {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.contact-badges {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.notification-badge {
+    background: #17a2b8;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.priority-order-badge {
+    background: #6c757d;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Configuration forms */
+.config-form-section {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.config-form-section h5 {
+    color: #495057;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+}
+
+.config-form-section .form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.config-form-section .form-text {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* Read-only access styling */
+.readonly-notice {
+    background: linear-gradient(135deg, rgba(23, 162, 184, 0.1), rgba(111, 66, 193, 0.1));
+    border: 1px solid rgba(23, 162, 184, 0.2);
+    border-radius: var(--border-radius);
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    color: #0c5460;
+}
+
+.readonly-notice strong {
+    color: #17a2b8;
+}
+
+/* Pagination styling for management pages */
+.management-pagination {
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+    border-top: 1px solid #f8f9fa;
+}
+
+.management-pagination .pagination {
+    margin-bottom: 0;
+    justify-content: center;
+}
+
+.management-pagination .pagination-info {
+    text-align: center;
+    margin-top: 1rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Empty state styling */
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #6c757d;
+}
+
+.empty-state .fa-inbox {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
+/* =====================================================
+   26. FINAL TOUCHES
    ===================================================== */
 
 /* Scrollbar styling for webkit browsers */
