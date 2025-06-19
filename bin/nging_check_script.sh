@@ -1,3 +1,72 @@
+#!/bin/bash
+# Nginx setup script for URLCheck dashboard
+
+echo "🔧 Setting up Nginx for URLCheck Dashboard"
+echo "=========================================="
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "❌ Please run as root (use sudo)"
+    exit 1
+fi
+
+# Backup current nginx.conf
+echo "📁 Backing up current nginx.conf..."
+cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup.$(date +%Y%m%d_%H%M%S)
+
+# Check if PHP-FPM is installed
+echo "🔍 Checking PHP-FPM..."
+if ! command -v php-fpm &> /dev/null; then
+    echo "⚠️  PHP-FPM not found. Installing..."
+    
+    # Detect OS and install PHP-FPM
+    if [ -f /etc/redhat-release ]; then
+        # RHEL/CentOS/Rocky
+        yum install -y php php-fpm php-mysql php-json php-mbstring php-xml
+        systemctl enable php-fpm
+    elif [ -f /etc/debian_version ]; then
+        # Debian/Ubuntu
+        apt update
+        apt install -y php php-fpm php-mysql php-json php-mbstring php-xml
+        systemctl enable php*-fpm
+    else
+        echo "❌ Unsupported OS. Please install PHP-FPM manually."
+        exit 1
+    fi
+fi
+
+# Find PHP-FPM socket path
+echo "🔍 Finding PHP-FPM socket..."
+PHP_SOCKET=""
+for socket in /var/run/php/php*-fpm.sock /run/php-fpm/www.sock /var/run/php-fpm/php-fpm.sock; do
+    if [ -S "$socket" ]; then
+        PHP_SOCKET="$socket"
+        break
+    fi
+done
+
+if [ -z "$PHP_SOCKET" ]; then
+    echo "❌ PHP-FPM socket not found. Please check PHP-FPM installation."
+    echo "Common locations:"
+    echo "  - /var/run/php/php8.1-fpm.sock (Ubuntu/Debian)"
+    echo "  - /run/php-fpm/www.sock (RHEL/CentOS)"
+    exit 1
+fi
+
+echo "✅ Found PHP-FPM socket: $PHP_SOCKET"
+
+# Create directory structure
+echo "📁 Creating directory structure..."
+mkdir -p /data/nginx/html/urlcheck
+mkdir -p /data/nginx/letsencrypt
+
+# Set proper permissions
+chown -R nginx:nginx /data/nginx/html/urlcheck
+chmod -R 755 /data/nginx/html/urlcheck
+
+# Update nginx.conf with correct PHP socket
+echo "⚙️  Updating nginx.conf..."
+cat > /etc/nginx/nginx.conf << 'EOF'
 user nginx;
 worker_processes auto;
 error_log /var/log/nginx/error.log;
@@ -27,7 +96,6 @@ http {
 
     include /etc/nginx/conf.d/*.conf;
 
-    # Only HTTP server block needed - LB handles HTTPS
     server {
         listen       80 default_server;
         listen       [::]:80 default_server;
@@ -36,17 +104,15 @@ http {
 
         include /etc/nginx/default.d/*.conf;
 
-        # URLCheck Dashboard - PHP Application
+        # URLCheck Dashboard
         location /urlcheck/ {
             alias /data/nginx/html/urlcheck/;
             index index.php index.html;
             
-            # Security headers for dashboard
             add_header X-Frame-Options "SAMEORIGIN" always;
             add_header X-Content-Type-Options "nosniff" always;
             add_header X-XSS-Protection "1; mode=block" always;
             
-            # Handle CSS files with correct MIME type
             location ~* \.css$ {
                 add_header Content-Type "text/css" always;
                 expires 1w;
@@ -54,7 +120,6 @@ http {
                 try_files $uri =404;
             }
             
-            # Handle JavaScript files
             location ~* \.js$ {
                 add_header Content-Type "application/javascript" always;
                 expires 1w;
@@ -62,67 +127,28 @@ http {
                 try_files $uri =404;
             }
             
-            # Handle images and fonts
             location ~* \.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
                 expires 1M;
                 add_header Cache-Control "public, immutable" always;
                 try_files $uri =404;
             }
             
-            # Handle PHP files
             location ~ \.php$ {
-                # Security check - only allow PHP files that exist
                 try_files $uri =404;
-                
-                # Pass to PHP-FPM
-                fastcgi_pass unix:/var/run/php/php-fpm.sock;
+                fastcgi_pass unix:PHP_SOCKET_PLACEHOLDER;
                 fastcgi_index index.php;
-                
-                # Standard FastCGI parameters
                 fastcgi_param SCRIPT_FILENAME $request_filename;
-                fastcgi_param DOCUMENT_ROOT $document_root;
-                fastcgi_param REQUEST_URI $request_uri;
-                fastcgi_param QUERY_STRING $query_string;
-                fastcgi_param REQUEST_METHOD $request_method;
-                fastcgi_param CONTENT_TYPE $content_type;
-                fastcgi_param CONTENT_LENGTH $content_length;
-                fastcgi_param SCRIPT_NAME $fastcgi_script_name;
-                fastcgi_param SERVER_NAME $server_name;
-                fastcgi_param SERVER_PORT $server_port;
-                fastcgi_param SERVER_PROTOCOL $server_protocol;
-                fastcgi_param HTTPS $https if_not_empty;
-                
-                # Additional parameters
                 include fastcgi_params;
-                
-                # Timeouts for dashboard
                 fastcgi_read_timeout 60s;
-                fastcgi_send_timeout 60s;
-                fastcgi_connect_timeout 60s;
-                
-                # Buffer settings
-                fastcgi_buffer_size 128k;
-                fastcgi_buffers 4 256k;
-                fastcgi_busy_buffers_size 256k;
-                
-                # Hide PHP version
                 fastcgi_hide_header X-Powered-By;
             }
             
-            # Deny access to sensitive files
             location ~ /\. {
                 deny all;
                 access_log off;
                 log_not_found off;
             }
             
-            location ~ ~$ {
-                deny all;
-                access_log off;
-                log_not_found off;
-            }
-            
-            # Deny access to configuration files
             location ~* \.(conf|config|ini|sql|bak|backup)$ {
                 deny all;
                 access_log off;
@@ -130,30 +156,20 @@ http {
             }
         }
 
-        # N8N Application (existing configuration)
+        # N8N Application
         location / {
             proxy_pass http://127.0.0.1:5678;
-            
-            # Headers for LB->nginx->n8n setup
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            
-            # CRITICAL: Tell n8n the original protocol was HTTPS
             proxy_set_header X-Forwarded-Proto https;
             proxy_set_header X-Forwarded-Host $host;
             proxy_set_header X-Forwarded-Port 443;
-            
-            # Websocket headers
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
-            
-            # Timeouts
             proxy_connect_timeout 60s;
             proxy_read_timeout 60s;
             proxy_send_timeout 60s;
-            
-            # Buffering - optimized for websockets
             proxy_buffer_size 128k;
             proxy_buffers 4 256k;
             proxy_busy_buffers_size 256k;
@@ -162,13 +178,11 @@ http {
             proxy_cache off;
         }
 
-        # Let's Encrypt (if needed)
         location ^~ /.well-known/acme-challenge/ {
             default_type "text/plain";
             root /data/nginx/letsencrypt;
         }
 
-        # Error pages
         error_page 404 /404.html;
         location = /404.html {
             root /data/nginx/html;
@@ -181,26 +195,55 @@ http {
             internal;
         }
         
-        # Global security headers
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header X-XSS-Protection "1; mode=block" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        
-        # Hide Nginx version
         server_tokens off;
         
-        # Gzip compression
         gzip on;
         gzip_vary on;
         gzip_min_length 1024;
         gzip_types
             application/javascript
             application/json
-            application/xml
             text/css
             text/javascript
-            text/plain
-            text/xml;
+            text/plain;
     }
 }
+EOF
+
+# Replace PHP socket placeholder
+sed -i "s|PHP_SOCKET_PLACEHOLDER|$PHP_SOCKET|g" /etc/nginx/nginx.conf
+
+# Test nginx configuration
+echo "🧪 Testing nginx configuration..."
+nginx -t
+
+if [ $? -eq 0 ]; then
+    echo "✅ Nginx configuration is valid"
+    
+    # Start/restart services
+    echo "🔄 Restarting services..."
+    systemctl restart php-fpm
+    systemctl restart nginx
+    
+    echo ""
+    echo "🎉 Setup complete!"
+    echo "📁 URLCheck files should be placed in: /data/nginx/html/urlcheck/"
+    echo "🌐 Access your dashboard at: http://your-domain/urlcheck/"
+    echo ""
+    echo "📋 Next steps:"
+    echo "1. Upload your PHP files to /data/nginx/html/urlcheck/"
+    echo "2. Set proper file permissions: chown -R nginx:nginx /data/nginx/html/urlcheck/"
+    echo "3. Test the dashboard: http://your-domain/urlcheck/login.php"
+    echo ""
+    echo "🔧 Configuration backup saved as: /etc/nginx/nginx.conf.backup.*"
+    
+else
+    echo "❌ Nginx configuration test failed!"
+    echo "🔄 Restoring backup..."
+    cp /etc/nginx/nginx.conf.backup.* /etc/nginx/nginx.conf
+    echo "💡 Please check the configuration manually"
+    exit 1
+fi
