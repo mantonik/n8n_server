@@ -1,0 +1,748 @@
+/* =====================================================
+   Website Health Monitor - Complete Stylesheet
+   Beautiful, modern dashboard styling
+   ===================================================== */
+
+/* =====================================================
+   1. GLOBAL STYLES & VARIABLES
+   ===================================================== */
+
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --warning-gradient: linear-gradient(135deg, #fcb045 0%, #fd1d1d 50%, #833ab4 100%);
+    --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    --card-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    --card-shadow-hover: 0 8px 25px rgba(0,0,0,0.15);
+    --border-radius: 15px;
+    --border-radius-lg: 20px;
+    --transition: all 0.3s ease;
+}
+
+body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* =====================================================
+   2. NAVIGATION BAR
+   ===================================================== */
+
+.navbar {
+    background: var(--primary-gradient) !important;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: white !important;
+}
+
+.navbar-nav .nav-link {
+    color: rgba(255,255,255,0.9) !important;
+    font-weight: 500;
+    padding: 0.5rem 1rem !important;
+    border-radius: 8px;
+    margin: 0 0.25rem;
+    transition: var(--transition);
+}
+
+.navbar-nav .nav-link:hover {
+    background: rgba(255,255,255,0.1);
+    color: white !important;
+}
+
+.dropdown-menu {
+    border: none;
+    box-shadow: var(--card-shadow);
+    border-radius: var(--border-radius);
+}
+
+/* =====================================================
+   3. CARDS & CONTAINERS
+   ===================================================== */
+
+.card {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0 !important;
+    font-weight: 600;
+    padding: 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* =====================================================
+   4. METRIC CARDS & DASHBOARD WIDGETS
+   ===================================================== */
+
+.metric-card {
+    text-align: center;
+    padding: 2rem 1.5rem;
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+    margin-bottom: 1.5rem;
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.metric-value {
+    font-size: 2.8rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.metric-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+/* =====================================================
+   5. STATUS BADGES & INDICATORS
+   ===================================================== */
+
+.status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.priority-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Status Colors */
+.bg-success { background: linear-gradient(135deg, #28a745, #20c997) !important; color: white !important; }
+.bg-danger { background: linear-gradient(135deg, #dc3545, #e83e8c) !important; color: white !important; }
+.bg-warning { background: linear-gradient(135deg, #ffc107, #fd7e14) !important; color: white !important; }
+.bg-info { background: linear-gradient(135deg, #17a2b8, #6f42c1) !important; color: white !important; }
+.bg-secondary { background: linear-gradient(135deg, #6c757d, #495057) !important; color: white !important; }
+
+/* =====================================================
+   6. SYSTEM STATUS HEADER
+   ===================================================== */
+
+.system-status {
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 2rem;
+    background: white;
+    box-shadow: var(--card-shadow);
+}
+
+.status-operational {
+    background: var(--success-gradient) !important;
+    color: white;
+}
+
+.status-degraded {
+    background: var(--warning-gradient) !important;
+    color: white;
+}
+
+.status-critical {
+    background: var(--danger-gradient) !important;
+    color: white;
+}
+
+/* =====================================================
+   7. TABLES & DATA DISPLAY
+   ===================================================== */
+
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-color: #f8f9fa;
+}
+
+.table-hover tbody tr:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+}
+
+.table-responsive {
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+}
+
+/* =====================================================
+   8. QUICK STATS GRID
+   ===================================================== */
+
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.quick-stats .card {
+    background: white;
+    border: none;
+    box-shadow: var(--card-shadow);
+}
+
+/* =====================================================
+   9. TEAM PERFORMANCE CARDS
+   ===================================================== */
+
+.team-card {
+    padding: 1.5rem;
+    border-left: 4px solid #dee2e6;
+    background: white;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: 1rem;
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+}
+
+.team-card:hover {
+    transform: translateX(5px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.uptime-good { border-left-color: #28a745; }
+.uptime-warning { border-left-color: #ffc107; }
+.uptime-critical { border-left-color: #dc3545; }
+
+/* =====================================================
+   10. ALERT DEFINITIONS & CONTACTS
+   ===================================================== */
+
+.alert-definition-card {
+    padding: 1.5rem;
+    background: rgba(255,255,255,0.8);
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+    transition: var(--transition);
+}
+
+.alert-definition-card:hover {
+    background: white;
+    box-shadow: var(--card-shadow);
+}
+
+.contact-item {
+    padding: 1rem;
+    background: rgba(248,249,250,0.8);
+    border-radius: var(--border-radius);
+    margin-bottom: 0.5rem;
+    transition: var(--transition);
+}
+
+.contact-item:hover {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* =====================================================
+   11. CONFIGURATION SECTIONS
+   ===================================================== */
+
+.config-section {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.config-section h5 {
+    color: #495057;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+/* =====================================================
+   12. BUTTONS & FORM CONTROLS
+   ===================================================== */
+
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.6rem 1.2rem;
+    transition: var(--transition);
+    border: none;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a4fb0);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-success {
+    background: var(--success-gradient);
+}
+
+.btn-warning {
+    background: var(--warning-gradient);
+}
+
+.btn-danger {
+    background: var(--danger-gradient);
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+}
+
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 0.6rem 1rem;
+    transition: var(--transition);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* =====================================================
+   13. PROGRESS BARS
+   ===================================================== */
+
+.progress {
+    height: 10px;
+    border-radius: 5px;
+    background: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 5px;
+}
+
+/* =====================================================
+   14. AUTO-REFRESH INDICATOR
+   ===================================================== */
+
+.auto-refresh {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* =====================================================
+   15. PAGINATION
+   ===================================================== */
+
+.pagination {
+    border-radius: var(--border-radius);
+}
+
+.page-link {
+    border: none;
+    color: #667eea;
+    padding: 0.6rem 1rem;
+    margin: 0 0.2rem;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.page-link:hover {
+    background: var(--primary-gradient);
+    color: white;
+}
+
+.page-item.active .page-link {
+    background: var(--primary-gradient);
+    border: none;
+}
+
+/* =====================================================
+   16. TABS
+   ===================================================== */
+
+.nav-tabs {
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 2rem;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    color: #6c757d;
+    font-weight: 600;
+    padding: 1rem 2rem;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    transition: var(--transition);
+}
+
+.nav-tabs .nav-link:hover {
+    border: none;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.nav-tabs .nav-link.active {
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+}
+
+/* =====================================================
+   17. MODALS
+   ===================================================== */
+
+.modal-content {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    background: var(--primary-gradient);
+    color: white;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+.modal-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 1.5rem;
+}
+
+/* =====================================================
+   18. ALERTS & NOTIFICATIONS
+   ===================================================== */
+
+.alert {
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1));
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(232, 62, 140, 0.1));
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(253, 126, 20, 0.1));
+    color: #856404;
+    border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, rgba(23, 162, 184, 0.1), rgba(111, 66, 193, 0.1));
+    color: #0c5460;
+    border-left: 4px solid #17a2b8;
+}
+
+/* =====================================================
+   19. RESPONSIVE DESIGN
+   ===================================================== */
+
+@media (max-width: 768px) {
+    .metric-value {
+        font-size: 2rem;
+    }
+    
+    .quick-stats {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .card-header {
+        padding: 1rem;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .team-card {
+        padding: 1rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .metric-value {
+        font-size: 1.8rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .quick-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* =====================================================
+   20. ANIMATION & TRANSITIONS
+   ===================================================== */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.metric-card:hover .metric-value {
+    animation: pulse 0.6s ease-in-out;
+}
+
+/* =====================================================
+   21. UTILITY CLASSES
+   ===================================================== */
+
+.text-gradient {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.shadow-sm { box-shadow: var(--card-shadow); }
+.shadow { box-shadow: var(--card-shadow-hover); }
+
+.rounded-lg { border-radius: var(--border-radius-lg); }
+.rounded { border-radius: var(--border-radius); }
+
+.border-gradient {
+    border: 2px solid;
+    border-image: var(--primary-gradient) 1;
+}
+
+/* =====================================================
+   22. DARK MODE SUPPORT (Optional)
+   ===================================================== */
+
+@media (prefers-color-scheme: dark) {
+    .card {
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+    }
+    
+    .table th {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        color: #495057;
+    }
+}
+
+/* =====================================================
+   23. LOADING STATES
+   ===================================================== */
+
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =====================================================
+   24. LOGIN PAGE STYLES
+   ===================================================== */
+
+.login-container {
+    max-width: 400px;
+    margin: 5rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-header h1 {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.icon-shield {
+    font-size: 3rem;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+    margin-top: 1rem;
+    background: var(--primary-gradient);
+    border: none;
+}
+
+.public-link, .system-status {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: #28a745;
+}
+
+/* =====================================================
+   25. FINAL TOUCHES
+   ===================================================== */
+
+/* Scrollbar styling for webkit browsers */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-gradient);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a4fb0);
+}
+
+/* Focus indicators for accessibility */
+*:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+    .navbar, .btn, .pagination { display: none !important; }
+    .card { box-shadow: none; border: 1px solid #ddd; }
+}
