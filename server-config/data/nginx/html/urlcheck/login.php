@@ -1,5 +1,5 @@
 <?php
-// login.php - Login page
+// login.php - Enhanced login page with demo user information
 require_once 'config.php';
 require_once 'auth.php';
 
@@ -27,6 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Handle logout message
+if (isset($_GET['message']) && $_GET['message'] === 'logged_out') {
+    $success_message = 'You have been successfully logged out.';
+}
+
 // If already authenticated, redirect to dashboard
 if ($auth->isAuthenticated()) {
     header('Location: dashboard.php');
@@ -41,120 +46,7 @@ if ($auth->isAuthenticated()) {
     <title><?php echo APP_NAME; ?> - Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .login-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 3rem 2rem;
-            width: 100%;
-            max-width: 400px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .login-header h1 {
-            color: #333;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            font-size: 1.8rem;
-        }
-        
-        .login-header p {
-            color: #666;
-            margin: 0;
-        }
-        
-        .form-floating {
-            margin-bottom: 1rem;
-        }
-        
-        .form-floating input {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            transition: all 0.3s ease;
-        }
-        
-        .form-floating input:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        
-        .btn-login {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px;
-            font-weight: 600;
-            width: 100%;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        .alert {
-            border-radius: 10px;
-            border: none;
-            margin-bottom: 1.5rem;
-        }
-        
-        .system-status {
-            text-align: center;
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid #eee;
-        }
-        
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: rgba(40, 167, 69, 0.1);
-            color: #28a745;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-        
-        .public-link {
-            text-align: center;
-            margin-top: 1.5rem;
-        }
-        
-        .public-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .public-link a:hover {
-            text-decoration: underline;
-        }
-        
-        .icon-shield {
-            color: #667eea;
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-    </style>
+    <link href="style.css" rel="stylesheet">
 </head>
 <body>
     <div class="login-container">
@@ -194,6 +86,50 @@ if ($auth->isAuthenticated()) {
                 Sign In
             </button>
         </form>
+
+        <!-- Demo Account Information -->
+        <div class="demo-info">
+            <div class="demo-header">
+                <i class="fas fa-eye me-2"></i>
+                <strong>Demo Account Available</strong>
+            </div>
+            <div class="demo-accounts">
+                <div class="demo-account">
+                    <div class="demo-account-header">
+                        <i class="fas fa-user-shield me-2 text-danger"></i>
+                        <strong>Administrator Access</strong>
+                    </div>
+                    <div class="demo-credentials">
+                        <span class="demo-label">Username:</span> <code>admin</code><br>
+                        <span class="demo-label">Password:</span> <code>monitor123!</code>
+                    </div>
+                    <div class="demo-features">
+                        <small class="text-muted">Full access - Add, edit, delete URLs and manage users</small>
+                    </div>
+                </div>
+                
+                <div class="demo-account">
+                    <div class="demo-account-header">
+                        <i class="fas fa-eye me-2 text-info"></i>
+                        <strong>Demo User (Read-Only)</strong>
+                    </div>
+                    <div class="demo-credentials">
+                        <span class="demo-label">Username:</span> <code>demo</code><br>
+                        <span class="demo-label">Password:</span> <code>demo</code>
+                    </div>
+                    <div class="demo-features">
+                        <small class="text-muted">View-only access - 30 minute session limit</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-note">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Demo accounts are for evaluation purposes. Change default passwords in production.
+                </small>
+            </div>
+        </div>
         
         <?php if (PUBLIC_DASHBOARD_ENABLED): ?>
             <div class="public-link">
@@ -225,6 +161,117 @@ if ($auth->isAuthenticated()) {
                 this.form.submit();
             }
         });
+        
+        // Quick login buttons
+        function quickLogin(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+            document.querySelector('form').submit();
+        }
+        
+        // Add quick login buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            const demoAccounts = document.querySelectorAll('.demo-account');
+            
+            demoAccounts.forEach(account => {
+                const credentials = account.querySelector('.demo-credentials');
+                const codes = credentials.querySelectorAll('code');
+                
+                if (codes.length >= 2) {
+                    const username = codes[0].textContent;
+                    const password = codes[1].textContent;
+                    
+                    const quickLoginBtn = document.createElement('button');
+                    quickLoginBtn.type = 'button';
+                    quickLoginBtn.className = 'btn btn-outline-primary btn-sm mt-2';
+                    quickLoginBtn.innerHTML = '<i class="fas fa-bolt me-1"></i>Quick Login';
+                    quickLoginBtn.onclick = () => quickLogin(username, password);
+                    
+                    account.appendChild(quickLoginBtn);
+                }
+            });
+        });
     </script>
+    
+    <style>
+        .demo-info {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            backdrop-filter: blur(5px);
+        }
+        
+        .demo-header {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+        
+        .demo-accounts {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .demo-account {
+            background: rgba(248, 249, 250, 0.8);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .demo-account-header {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .demo-credentials {
+            margin-bottom: 0.5rem;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .demo-credentials code {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .demo-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .demo-features {
+            margin-top: 0.5rem;
+        }
+        
+        .demo-note {
+            text-align: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        
+        @media (max-width: 576px) {
+            .demo-info {
+                margin: 1rem;
+                padding: 1rem;
+            }
+            
+            .demo-credentials {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
 </body>
 </html>
