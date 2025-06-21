@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: urlcheck-web
+    ports:
+      - "8001:80"
+    volumes:
+      - /data/wwwapp/htdocs:/var/www/html
+      - /data/wwwapp/logs/nginx:/var/log/nginx
+      - /data/wwwapp/logs/supervisor:/var/log/supervisor
+    environment:
+      - DB_HOST=10.20.2.34
+      - DB_NAME=n8n_url_healthcheck
+      - DB_USER=n8nheathcheckusr
+      - DB_PASS=Edcvfr5687#9ikjJhsg
+    restart: unless-stopped
+    networks:
+      - urlcheck-network
+
+networks:
+  urlcheck-network:
+    driver: bridge
