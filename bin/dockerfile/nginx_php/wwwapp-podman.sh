@@ -25,13 +25,14 @@ case "$1" in
         podman rm $CONTAINER_NAME 2>/dev/null || true
         
         # Start container with correct volume mappings
-        # -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
+        # 
         podman run -d \
             --name $CONTAINER_NAME \
             -p 8001:80 \
             -v $BASE_PATH/var/www/html:/var/www/html:Z \
             -v $BASE_PATH/var/logs/nginx:/var/log/nginx:Z \
             -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \
+            -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
             -e DB_HOST=10.20.2.34 \
             -e DB_NAME=n8n_url_healthcheck \
             -e DB_USER=n8nheathcheckusr \
@@ -51,13 +52,14 @@ case "$1" in
         podman rm $CONTAINER_NAME 2>/dev/null || true
         
         # Start in foreground for debugging
-        # -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
+        # 
         podman run --rm \
             --name $CONTAINER_NAME-debug \
             -p 8001:80 \
             -v $BASE_PATH/var/www/html:/var/www/html:Z \
             -v $BASE_PATH/var/logs/nginx:/var/log/nginx:Z \
             -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \      
+            -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
             -e DB_HOST=10.20.2.34 \
             -e DB_NAME=n8n_url_healthcheck \
             -e DB_USER=n8nheathcheckusr \
