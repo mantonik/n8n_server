@@ -88,6 +88,7 @@ chmod 755 ~/bin/n8n_server/bin/*.sh
 #copy nginx files 
 \cp -r ~/bin/n8n_server/server-config/data/nginx/* /data/nginx
 chmod 755 ~/bin/n8n_server/bin/dockerfile/www_php_app/build.sh
+chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
 
 ll /data/nginx/html/urlcheck/
 chmod 755 /data/nginx/html/urlcheck

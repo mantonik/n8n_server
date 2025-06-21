@@ -24,18 +24,19 @@ case "$1" in
         docker rm $CONTAINER_NAME 2>/dev/null || true
         
         # Start new container
+        # -v /data/docker/wwwapp/etc/nginx:/etc/nginx \
         nohup docker run -d \
             --name $CONTAINER_NAME \
             -p 8001:80 \
-            -v /data/wwwapp/htdocs:/var/www/html \
-            -v /data/wwwapp/logs/nginx:/var/log/nginx \
-            -v /data/wwwapp/logs/supervisor:/var/log/supervisor \
+            -v /data/docker/wwwapp/var/www/html:/var/www/html \
+            -v /data/docker/wwwapp/var/logs/nginx:/var/log/nginx \
+            -v /data/docker/wwwapp/var/logs/supervisor:/var/log/supervisor \
             -e DB_HOST=10.20.2.34 \
             -e DB_NAME=n8n_url_healthcheck \
             -e DB_USER=n8nheathcheckusr \
             -e DB_PASS=Edcvfr5687#9ikjJhsg \
             --restart unless-stopped \
-            $IMAGE_NAME > /data/wwwapp/logs/docker-start.log 2>&1 &
+            $IMAGE_NAME > /data/docker/wwwapp/var/logs/docker-start.log 2>&1 &
         
         sleep 3
         echo "✅ Container started. Check status with: $0 status"
