@@ -6,7 +6,10 @@ dnf update
 #Install docker 
 # install nginx
 
-dnf install -y docker nginx policycoreutils-python-utils podman-compose
+dnf install -y docker nginx policycoreutils-python-utils 
+
+# alternative for docker 
+#podman-compose
 
 
 # Option 2: Install legacy docker-compose
