@@ -1,0 +1,11 @@
+# 1. Setup the directory structure
+chmod +x setup-wwwapp.sh
+./setup-wwwapp.sh
+
+# 2. Make sure you have the Docker files in current directory
+ls -la Dockerfile nginx.conf default.conf supervisord.conf
+
+# 3. Build and start
+chmod +x wwwapp-podman.sh
+./wwwapp-podman.sh build
+./wwwapp-podman.sh start

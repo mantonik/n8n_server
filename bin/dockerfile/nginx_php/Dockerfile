@@ -11,9 +11,9 @@ RUN apk add --no-cache \
     mysqli
 
 # Copy nginx and supervisor configurations
-#COPY nginx.conf /etc/nginx/nginx.conf
-#COPY default.conf /etc/nginx/conf.d/default.conf
-#COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY config/nginx.conf /etc/nginx/nginx.conf
+COPY config/default.conf /etc/nginx/conf.d/default.conf
+COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Create necessary directories
 RUN mkdir -p /var/www/html \
