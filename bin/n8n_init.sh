@@ -8,6 +8,11 @@ dnf update
 
 yum install -y docker nginx policycoreutils-python-utils
 
+# Option 2: Install legacy docker-compose
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+
 #Generate SSL certificate 
 mkdir -p /etc/nginx/ssl
 
