@@ -10,11 +10,9 @@ RUN apk add --no-cache \
     pdo_mysql \
     mysqli
 
-# Copy nginx configuration
+# Copy nginx and supervisor configurations
 #COPY nginx.conf /etc/nginx/nginx.conf
 #COPY default.conf /etc/nginx/conf.d/default.conf
-
-# Copy supervisor configuration
 #COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Create necessary directories
