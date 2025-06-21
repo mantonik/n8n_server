@@ -1,0 +1,20 @@
+bash# Start the application
+podman-compose up -d
+
+# Stop the application
+podman-compose down
+
+# Restart the application
+podman-compose restart
+
+# Rebuild and start
+podman-compose up -d --build
+
+# View logs
+podman-compose logs -f
+
+# Check container status
+podman-compose ps
+
+# Enter container shell
+podman-compose exec php-app sh

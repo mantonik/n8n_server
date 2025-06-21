@@ -1,23 +1,14 @@
-# Dockerfile for PHP + Nginx Single Container
+# Minimal Dockerfile for PHP + Nginx (Oracle Linux compatible)
 FROM php:8.2-fpm-alpine
 
-# Set environment variables
-ENV NGINX_VERSION=1.24.0
-ENV COMPOSER_VERSION=2.6.5
-
-# Install system dependencies
+# Install system dependencies (minimal set)
 RUN apk add --no-cache \
     # Build dependencies
     build-base \
     autoconf \
-    g++ \
-    make \
     # System utilities
     curl \
     wget \
-    git \
-    unzip \
-    zip \
     # Nginx
     nginx \
     # Supervisor for process management
@@ -26,18 +17,15 @@ RUN apk add --no-cache \
     freetype-dev \
     libjpeg-turbo-dev \
     libpng-dev \
-    libwebp-dev \
     # Database
     libzip-dev \
     libxml2-dev \
     oniguruma-dev \
-    # SSL
-    openssl-dev \
     # Process management
     bash
 
-# Configure and install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp
+# Configure and install essential PHP extensions only
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 RUN docker-php-ext-install -j$(nproc) \
     bcmath \
     gd \
@@ -48,15 +36,13 @@ RUN docker-php-ext-install -j$(nproc) \
     opcache \
     xml \
     mbstring \
-    intl \
-    soap \
     sockets
 
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
 
 # Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=${COMPOSER_VERSION}
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Create web directory
 RUN mkdir -p /var/www/htdocs
@@ -78,288 +64,96 @@ RUN mkdir -p \
     /var/tmp/nginx
 
 # Configure PHP-FPM
-COPY <<EOF /usr/local/etc/php-fpm.d/www.conf
-[www]
-user = nginx
-group = nginx
-
-listen = 127.0.0.1:9000
-listen.owner = nginx
-listen.group = nginx
-listen.mode = 0660
-
-pm = dynamic
-pm.max_children = 50
-pm.start_servers = 5
-pm.min_spare_servers = 5
-pm.max_spare_servers = 35
-pm.max_requests = 500
-
-; Health check
-ping.path = /ping
-ping.response = pong
-
-; Logging
-catch_workers_output = yes
-decorate_workers_output = no
-
-; Security
-php_admin_value[disable_functions] = exec,passthru,shell_exec,system,proc_open,popen
-php_flag[display_errors] = off
-php_admin_flag[log_errors] = on
-php_admin_value[memory_limit] = 256M
-php_admin_value[max_execution_time] = 300
-EOF
+RUN echo '[www]' > /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'user = nginx' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'group = nginx' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'listen.owner = nginx' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'listen.group = nginx' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'listen.mode = 0660' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'pm = dynamic' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'pm.max_children = 50' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'pm.start_servers = 5' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'pm.min_spare_servers = 5' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'pm.max_spare_servers = 35' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'pm.max_requests = 500' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'ping.path = /ping' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'ping.response = pong' >> /usr/local/etc/php-fpm.d/www.conf && \
+    echo 'catch_workers_output = yes' >> /usr/local/etc/php-fpm.d/www.conf
 
 # Configure PHP
-COPY <<EOF /usr/local/etc/php/conf.d/custom.ini
-; Basic Settings
-memory_limit = 256M
-max_execution_time = 300
-max_input_time = 300
-post_max_size = 50M
-upload_max_filesize = 50M
-max_file_uploads = 20
-
-; Session Configuration
-session.save_handler = files
-session.save_path = "/tmp"
-session.gc_maxlifetime = 1440
-session.cookie_httponly = On
-session.use_strict_mode = On
-
-; Error Reporting
-display_errors = Off
-display_startup_errors = Off
-log_errors = On
-error_log = /var/log/php/error.log
-error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
-
-; Date/Time
-date.timezone = "UTC"
-
-; OPcache Configuration
-opcache.enable = 1
-opcache.enable_cli = 1
-opcache.memory_consumption = 128
-opcache.interned_strings_buffer = 8
-opcache.max_accelerated_files = 4000
-opcache.revalidate_freq = 2
-opcache.fast_shutdown = 1
-opcache.validate_timestamps = 1
-
-; Security
-expose_php = Off
-allow_url_fopen = On
-allow_url_include = Off
-
-; File Uploads
-file_uploads = On
-upload_tmp_dir = /tmp
-EOF
+RUN echo 'memory_limit = 256M' > /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'max_execution_time = 300' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'max_input_time = 300' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'post_max_size = 50M' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'upload_max_filesize = 50M' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'max_file_uploads = 20' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'session.save_handler = files' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'session.save_path = "/tmp"' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'display_errors = Off' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'log_errors = On' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'error_log = /var/log/php/error.log' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'date.timezone = "UTC"' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'opcache.enable = 1' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'opcache.memory_consumption = 128' >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo 'expose_php = Off' >> /usr/local/etc/php/conf.d/custom.ini
 
 # Configure Nginx
-COPY <<EOF /etc/nginx/nginx.conf
-user nginx;
-worker_processes auto;
-error_log /var/log/nginx/error.log warn;
-pid /run/nginx.pid;
-
-events {
-    worker_connections 1024;
-    use epoll;
-    multi_accept on;
-}
-
-http {
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-
-    # Logging
-    log_format main '\$remote_addr - \$remote_user [\$time_local] "\$request" '
-                    '\$status \$body_bytes_sent "\$http_referer" '
-                    '"\$http_user_agent" "\$http_x_forwarded_for"';
-
-    access_log /var/log/nginx/access.log main;
-
-    # Performance
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    keepalive_timeout 65;
-    types_hash_max_size 2048;
-    client_max_body_size 50M;
-
-    # Gzip
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_comp_level 6;
-    gzip_types
-        application/atom+xml
-        application/javascript
-        application/json
-        application/rss+xml
-        application/vnd.ms-fontobject
-        application/x-font-ttf
-        application/x-web-app-manifest+json
-        application/xhtml+xml
-        application/xml
-        font/opentype
-        image/svg+xml
-        image/x-icon
-        text/css
-        text/plain
-        text/x-component;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-
-    include /etc/nginx/conf.d/*.conf;
-}
-EOF
+RUN echo 'user nginx;' > /etc/nginx/nginx.conf && \
+    echo 'worker_processes auto;' >> /etc/nginx/nginx.conf && \
+    echo 'error_log /var/log/nginx/error.log warn;' >> /etc/nginx/nginx.conf && \
+    echo 'pid /run/nginx.pid;' >> /etc/nginx/nginx.conf && \
+    echo 'events {' >> /etc/nginx/nginx.conf && \
+    echo '    worker_connections 1024;' >> /etc/nginx/nginx.conf && \
+    echo '}' >> /etc/nginx/nginx.conf && \
+    echo 'http {' >> /etc/nginx/nginx.conf && \
+    echo '    include /etc/nginx/mime.types;' >> /etc/nginx/nginx.conf && \
+    echo '    default_type application/octet-stream;' >> /etc/nginx/nginx.conf && \
+    echo '    sendfile on;' >> /etc/nginx/nginx.conf && \
+    echo '    keepalive_timeout 65;' >> /etc/nginx/nginx.conf && \
+    echo '    include /etc/nginx/conf.d/*.conf;' >> /etc/nginx/nginx.conf && \
+    echo '}' >> /etc/nginx/nginx.conf
 
 # Configure default Nginx site
-COPY <<EOF /etc/nginx/conf.d/default.conf
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    
-    root /var/www/htdocs;
-    index index.php index.html index.htm;
-    
-    server_name _;
-    
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    
-    # Main location
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-    
-    # PHP files
-    location ~ \.php\$ {
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_param PATH_INFO \$fastcgi_path_info;
-        fastcgi_read_timeout 300;
-        fastcgi_buffer_size 128k;
-        fastcgi_buffers 4 256k;
-        fastcgi_busy_buffers_size 256k;
-    }
-    
-    # Static files
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)\$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-        log_not_found off;
-    }
-    
-    # Favicon
-    location = /favicon.ico {
-        access_log off;
-        log_not_found off;
-    }
-    
-    # Robots
-    location = /robots.txt {
-        access_log off;
-        log_not_found off;
-    }
-    
-    # Health check
-    location = /health {
-        access_log off;
-        return 200 "healthy\\n";
-        add_header Content-Type text/plain;
-    }
-    
-    # PHP-FPM health check
-    location = /ping {
-        access_log off;
-        fastcgi_pass 127.0.0.1:9000;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    }
-    
-    # Deny access to sensitive files
-    location ~ /\\. {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
-    
-    location ~ /\\.ht {
-        deny all;
-    }
-    
-    location ~ composer\\.(json|lock) {
-        deny all;
-    }
-    
-    location ~ package\\.json {
-        deny all;
-    }
-    
-    location ~ \\.env {
-        deny all;
-    }
-    
-    # Error pages
-    error_page 404 /404.html;
-    error_page 500 502 503 504 /50x.html;
-}
-EOF
+RUN mkdir -p /etc/nginx/conf.d && \
+    echo 'server {' > /etc/nginx/conf.d/default.conf && \
+    echo '    listen 80 default_server;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    root /var/www/htdocs;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    index index.php index.html;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    location / {' >> /etc/nginx/conf.d/default.conf && \
+    echo '        try_files $uri $uri/ /index.php?$query_string;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    }' >> /etc/nginx/conf.d/default.conf && \
+    echo '    location ~ \.php$ {' >> /etc/nginx/conf.d/default.conf && \
+    echo '        fastcgi_pass 127.0.0.1:9000;' >> /etc/nginx/conf.d/default.conf && \
+    echo '        fastcgi_index index.php;' >> /etc/nginx/conf.d/default.conf && \
+    echo '        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;' >> /etc/nginx/conf.d/default.conf && \
+    echo '        include fastcgi_params;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    }' >> /etc/nginx/conf.d/default.conf && \
+    echo '    location = /health {' >> /etc/nginx/conf.d/default.conf && \
+    echo '        return 200 "healthy\n";' >> /etc/nginx/conf.d/default.conf && \
+    echo '        add_header Content-Type text/plain;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    }' >> /etc/nginx/conf.d/default.conf && \
+    echo '    location = /ping {' >> /etc/nginx/conf.d/default.conf && \
+    echo '        fastcgi_pass 127.0.0.1:9000;' >> /etc/nginx/conf.d/default.conf && \
+    echo '        include fastcgi_params;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    }' >> /etc/nginx/conf.d/default.conf && \
+    echo '}' >> /etc/nginx/conf.d/default.conf
 
 # Configure Supervisor
-COPY <<EOF /etc/supervisord.conf
-[supervisord]
-nodaemon=true
-logfile=/var/log/supervisor/supervisord.log
-pidfile=/var/run/supervisord.pid
-childlogdir=/var/log/supervisor/
-logfile_maxbytes=50MB
-logfile_backups=10
-loglevel=info
-user=root
-
-[unix_http_server]
-file=/var/run/supervisor.sock
-chmod=0700
-
-[supervisorctl]
-serverurl=unix:///var/run/supervisor.sock
-
-[rpcinterface:supervisor]
-supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
-
-[program:nginx]
-command=nginx -g "daemon off;"
-autostart=true
-autorestart=true
-priority=10
-stdout_logfile=/var/log/supervisor/nginx_stdout.log
-stderr_logfile=/var/log/supervisor/nginx_stderr.log
-user=root
-
-[program:php-fpm]
-command=php-fpm --nodaemonize
-autostart=true
-autorestart=true
-priority=5
-stdout_logfile=/var/log/supervisor/php-fpm_stdout.log
-stderr_logfile=/var/log/supervisor/php-fpm_stderr.log
-user=root
-EOF
+RUN echo '[supervisord]' > /etc/supervisord.conf && \
+    echo 'nodaemon=true' >> /etc/supervisord.conf && \
+    echo 'logfile=/var/log/supervisor/supervisord.log' >> /etc/supervisord.conf && \
+    echo 'pidfile=/var/run/supervisord.pid' >> /etc/supervisord.conf && \
+    echo '[program:nginx]' >> /etc/supervisord.conf && \
+    echo 'command=nginx -g "daemon off;"' >> /etc/supervisord.conf && \
+    echo 'autostart=true' >> /etc/supervisord.conf && \
+    echo 'autorestart=true' >> /etc/supervisord.conf && \
+    echo 'priority=10' >> /etc/supervisord.conf && \
+    echo '[program:php-fpm]' >> /etc/supervisord.conf && \
+    echo 'command=php-fpm --nodaemonize' >> /etc/supervisord.conf && \
+    echo 'autostart=true' >> /etc/supervisord.conf && \
+    echo 'autorestart=true' >> /etc/supervisord.conf && \
+    echo 'priority=5' >> /etc/supervisord.conf
 
 # Create log directories
 RUN mkdir -p /var/log/php /var/log/supervisor
@@ -370,40 +164,19 @@ RUN chown -R nginx:nginx /var/www/htdocs && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/tmp/nginx
 
-# Create a simple index.php for testing
-COPY <<EOF /var/www/htdocs/index.php
-<?php
-phpinfo();
-EOF
-
 # Create health check script
-COPY <<EOF /usr/local/bin/health-check
-#!/bin/sh
-# Health check script for container
-
-# Check if nginx is running
-if ! pgrep nginx > /dev/null; then
-    echo "Nginx is not running"
-    exit 1
-fi
-
-# Check if php-fpm is running
-if ! pgrep php-fpm > /dev/null; then
-    echo "PHP-FPM is not running"
-    exit 1
-fi
-
-# Check if we can connect to php-fpm
-if ! curl -f http://localhost/ping > /dev/null 2>&1; then
-    echo "PHP-FPM ping failed"
-    exit 1
-fi
-
-echo "All services are healthy"
-exit 0
-EOF
-
-RUN chmod +x /usr/local/bin/health-check
+RUN echo '#!/bin/sh' > /usr/local/bin/health-check && \
+    echo 'if ! pgrep nginx > /dev/null; then' >> /usr/local/bin/health-check && \
+    echo '    echo "Nginx is not running"' >> /usr/local/bin/health-check && \
+    echo '    exit 1' >> /usr/local/bin/health-check && \
+    echo 'fi' >> /usr/local/bin/health-check && \
+    echo 'if ! pgrep php-fpm > /dev/null; then' >> /usr/local/bin/health-check && \
+    echo '    echo "PHP-FPM is not running"' >> /usr/local/bin/health-check && \
+    echo '    exit 1' >> /usr/local/bin/health-check && \
+    echo 'fi' >> /usr/local/bin/health-check && \
+    echo 'echo "All services are healthy"' >> /usr/local/bin/health-check && \
+    echo 'exit 0' >> /usr/local/bin/health-check && \
+    chmod +x /usr/local/bin/health-check
 
 # Set working directory
 WORKDIR /var/www/htdocs
