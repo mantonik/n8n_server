@@ -64,7 +64,7 @@ case "$1" in
             -p 8001:80 \
             -v $BASE_PATH/var/www/html:/var/www/html:Z \
             -v $BASE_PATH/var/logs/nginx:/var/log/nginx:Z \
-            -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \      
+            -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \
             -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
             -v $BASE_PATH/etc/nginx/default.conf:/etc/nginx/ndefault.conf:Z \
             $IMAGE_NAME
@@ -88,11 +88,12 @@ case "$1" in
         if podman ps | grep -q $CONTAINER_NAME; then
             podman ps | grep $CONTAINER_NAME
             echo ""
-            echo "🌐 Application URLs:"
+            echo "🌐 Application URLs (in pod):"
             echo "   • Main App: http://$(hostname -I | awk '{print $1}'):8001"
             echo "   • URL Health Check: http://$(hostname -I | awk '{print $1}'):8001/urlcheck/"
             echo "   • Test Page: http://$(hostname -I | awk '{print $1}'):8001/index.php"
             echo " "
+            echo "🌐 Application URLs (from server:"
             echo "   • Main App: curl -v http://localhost:8001/"
             echo "   • URL Health Check: curl -v http://localhost:8001/urlcheck/"
             echo "   • Test Page: curl -v http://localhost:8001/index.php"

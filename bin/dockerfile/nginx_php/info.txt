@@ -10,6 +10,8 @@ chmod +x wwwapp-podman.sh
 ./wwwapp-podman.sh build
 ./wwwapp-podman.sh start
 
+./wwwapp-podman.sh start-debug
+
 -- remove container
 ./wwwapp-podman.sh clean
 podman rmi wwwapp
@@ -41,3 +43,16 @@ netstat -tlnp | grep :80
 ss -tlnp | grep :80
 curl http://localhost:80/health
 exit
+
+
+# Stop nginx first
+nginx -s stop
+# or
+pkill nginx
+
+# Then restart
+nginx
+
+# Check if it's listening
+netstat -tlnp | grep :80
+
