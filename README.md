@@ -90,6 +90,7 @@ chmod 755 ~/bin/n8n_server/bin/*.sh
 chmod 755 ~/bin/n8n_server/bin/dockerfile/www_php_app/build.sh
 chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
 \cp -r n8n_server/server-config/data/* /data
+cd /root/bin/n8n_server/bin/dockerfile/nginx_php
 
 ll /data/nginx/html/urlcheck/
 chmod 755 /data/nginx/html/urlcheck
