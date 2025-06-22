@@ -13,3 +13,31 @@ chmod +x wwwapp-podman.sh
 -- remove container
 ./wwwapp-podman.sh clean
 podman rmi wwwapp
+
+
+in pod restart nginx 
+
+Troubleshoot runnign instance 
+netstat -tlnp | grep :8001
+
+# Check if port 8001 is actually bound on the host
+netstat -tlnp | grep :8001
+ss -tlnp | grep :8001
+
+# Check what podman thinks about port mapping
+podman port wwwapp
+
+# Check container network details
+podman inspect wwwapp | grep -A 10 -B 10 "PortBindings\|NetworkMode"
+
+
+# Verify container is actually running
+./wwwapp-podman.sh status
+
+# Check if nginx is listening inside the container
+./wwwapp-podman.sh shell
+netstat -tlnp | grep :80
+# or
+ss -tlnp | grep :80
+curl http://localhost:80/health
+exit

@@ -98,6 +98,8 @@ cd /root/bin/n8n_server/bin/dockerfile/nginx_php
 ./wwwapp-podman.sh start
 ./wwwapp-podman.sh status
 curl -v http://localhost:8001/t.html
+ls -lrt /data/docker/wwwapp/etc/nginx
+
 
 
 

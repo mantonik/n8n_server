@@ -26,6 +26,11 @@ case "$1" in
         
         # Start container with correct volume mappings
         # 
+        #      -e DB_HOST=10.20.2.34 \
+        #   -e DB_NAME=n8n_url_healthcheck \
+        #   -e DB_USER=n8nheathcheckusr \
+        #   -e DB_PASS=Edcvfr5687#9ikjJhsg \
+        #   
         podman run -d \
             --name $CONTAINER_NAME \
             -p 8001:80 \
@@ -34,10 +39,6 @@ case "$1" in
             -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \
             -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
             -v $BASE_PATH/etc/nginx/default.conf:/etc/nginx/default.conf:Z \
-            -e DB_HOST=10.20.2.34 \
-            -e DB_NAME=n8n_url_healthcheck \
-            -e DB_USER=n8nheathcheckusr \
-            -e DB_PASS=Edcvfr5687#9ikjJhsg \
             --restart unless-stopped \
             $IMAGE_NAME
         
@@ -54,6 +55,10 @@ case "$1" in
         
         # Start in foreground for debugging
         # 
+        #           -e DB_HOST=10.20.2.34 \
+        #   -e DB_NAME=n8n_url_healthcheck \
+        #   -e DB_USER=n8nheathcheckusr \
+        #   -e DB_PASS=Edcvfr5687#9ikjJhsg \
         podman run --rm \
             --name $CONTAINER_NAME-debug \
             -p 8001:80 \
@@ -62,10 +67,6 @@ case "$1" in
             -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \      
             -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
             -v $BASE_PATH/etc/nginx/default.conf:/etc/nginx/ndefault.conf:Z \
-            -e DB_HOST=10.20.2.34 \
-            -e DB_NAME=n8n_url_healthcheck \
-            -e DB_USER=n8nheathcheckusr \
-            -e DB_PASS=Edcvfr5687#9ikjJhsg \
             $IMAGE_NAME
         ;;
     
