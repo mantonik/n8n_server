@@ -8,7 +8,7 @@ NETWORK_SUBNET="10.101.10.0/24"
 NETWORK_GATEWAY="10.101.10.1"
 
 # Container IP assignments
-WWWAPP_IP="10.10.10.21"
+WWWAPP_IP="10.101.10.21"
 
 echo "🌐 Setting up Podman Network Infrastructure..."
 

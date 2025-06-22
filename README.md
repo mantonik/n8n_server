@@ -100,7 +100,7 @@ find /data/docker -type d -exec chmod 755 {} \; -print
 find /data/docker -type f -exec chmod 644 {} \; -print
 
 #rebuild webapp
-cd /root/bin/n8n_server/bin/dockerfile/nginx_php
+cd /root/bin/n8n_server/bin/dockerfile/wwwapp
 ./wwwapp-podman.sh clean
 ./wwwapp-podman.sh build
 ./wwwapp-podman.sh start
