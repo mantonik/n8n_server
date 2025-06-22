@@ -35,7 +35,7 @@ case "$1" in
             -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
             -v $BASE_PATH/etc/nginx/default.conf:/etc/nginx/default.conf:Z \
             -e DB_HOST=10.20.2.34 \
-            -e DB_NAME=n8n_url_healthcheck \s
+            -e DB_NAME=n8n_url_healthcheck \
             -e DB_USER=n8nheathcheckusr \
             -e DB_PASS=Edcvfr5687#9ikjJhsg \
             --restart unless-stopped \
