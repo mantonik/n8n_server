@@ -92,6 +92,12 @@ case "$1" in
             echo "   • Main App: http://$(hostname -I | awk '{print $1}'):8001"
             echo "   • URL Health Check: http://$(hostname -I | awk '{print $1}'):8001/urlcheck/"
             echo "   • Test Page: http://$(hostname -I | awk '{print $1}'):8001/index.php"
+            echo " "
+            echo "   • Main App: curl -v http://localhost:8001/"
+            echo "   • URL Health Check: curl -v http://localhost:8001/urlcheck/"
+            echo "   • Test Page: curl -v http://localhost:8001/index.php"
+            echo ""
+            
         else
             echo "❌ Container is not running"
             echo "Recent containers:"
