@@ -1,5 +1,10 @@
 Application network Structure 
 
+Setup network first and then run each pod
+
+
+
+
 application is running as user 
 
 user: appusr ID: 10001

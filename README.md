@@ -91,6 +91,9 @@ chmod 755 ~/bin/n8n_server/bin/dockerfile/www_php_app/build.sh
 chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
 \cp -r n8n_server/server-config/data/* /data
 
+
+find ~/bin/n8n_server -name "*.sh" -exec chmod 755 {} \;
+
 #Fix file permissions
 find /data/docker -type d -exec chmod 755 {} \; -print
 find /data/docker -type f -exec chmod 644 {} \; -print
