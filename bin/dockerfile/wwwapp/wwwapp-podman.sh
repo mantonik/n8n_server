@@ -2,10 +2,13 @@
 
 # Podman commands for WWWApp (Website Health Monitor)
 # Updated for correct directory structure: /data/docker/wwwapp
+# Network enabled with static IP support
 
 IMAGE_NAME="wwwapp"
 CONTAINER_NAME="wwwapp"
 BASE_PATH="/data/docker/wwwapp"
+NETWORK_NAME="app-network"
+WWWAPP_IP="10.10.10.21"
 
 case "$1" in
     "build")
@@ -14,7 +17,49 @@ case "$1" in
         ;;
     
     "start")
-        echo "🚀 Starting WWWApp container..."
+        echo "🚀 Starting WWWApp container with static IP..."
+        
+        # Create directories if they don't exist
+        sudo mkdir -p $BASE_PATH/var/{www/html,logs/{nginx,supervisor}}
+        sudo chown -R 1000:1000 $BASE_PATH/
+        
+        # Check if network exists
+        if ! podman network ls | grep -q $NETWORK_NAME; then
+            echo "❌ Network $NETWORK_NAME doesn't exist"
+            echo "📡 Create network first with: ./setup-network.sh create"
+            exit 1
+        fi
+        
+        # Stop existing container
+        podman stop $CONTAINER_NAME 2>/dev/null || true
+        podman rm $CONTAINER_NAME 2>/dev/null || true
+        
+        # Start container with static IP on custom network
+        # 
+        #      -e DB_HOST=10.20.2.34 \
+        #   -e DB_NAME=n8n_url_healthcheck \
+        #   -e DB_USER=n8nheathcheckusr \
+        #   -e DB_PASS=Edcvfr5687#9ikjJhsg \
+        #   
+        podman run -d \
+            --name $CONTAINER_NAME \
+            --network $NETWORK_NAME:ip=$WWWAPP_IP \
+            -p 8001:80 \
+            -v $BASE_PATH/var/www/html:/var/www/html:Z \
+            -v $BASE_PATH/var/logs/nginx:/var/log/nginx:Z \
+            -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \
+            -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
+            -v $BASE_PATH/etc/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:Z \
+            --restart unless-stopped \
+            $IMAGE_NAME
+        
+        sleep 3
+        echo "✅ WWWApp container started with static IP: $WWWAPP_IP"
+        echo "📍 Network: $NETWORK_NAME"
+        ;;
+    
+    "start-bridge")
+        echo "🚀 Starting WWWApp container on default bridge network..."
         
         # Create directories if they don't exist
         sudo mkdir -p $BASE_PATH/var/{www/html,logs/{nginx,supervisor}}
@@ -24,7 +69,7 @@ case "$1" in
         podman stop $CONTAINER_NAME 2>/dev/null || true
         podman rm $CONTAINER_NAME 2>/dev/null || true
         
-        # Start container with correct volume mappings
+        # Start container on default bridge network (fallback)
         # 
         #      -e DB_HOST=10.20.2.34 \
         #   -e DB_NAME=n8n_url_healthcheck \
@@ -43,7 +88,7 @@ case "$1" in
             $IMAGE_NAME
         
         sleep 3
-        echo "✅ WWWApp container started. Check status with: $0 status"
+        echo "✅ WWWApp container started on bridge network"
         ;;
     
     "start-debug")
@@ -53,6 +98,15 @@ case "$1" in
         podman stop $CONTAINER_NAME 2>/dev/null || true
         podman rm $CONTAINER_NAME 2>/dev/null || true
         
+        # Check if network exists and set network config
+        if podman network ls | grep -q $NETWORK_NAME; then
+            NETWORK_CONFIG="--network $NETWORK_NAME:ip=$WWWAPP_IP"
+            echo "Using custom network with IP: $WWWAPP_IP"
+        else
+            NETWORK_CONFIG=""
+            echo "Using default bridge network (custom network not found)"
+        fi
+        
         # Start in foreground for debugging
         # 
         #           -e DB_HOST=10.20.2.34 \
@@ -61,6 +115,7 @@ case "$1" in
         #   -e DB_PASS=Edcvfr5687#9ikjJhsg \
         podman run --rm \
             --name $CONTAINER_NAME-debug \
+            $NETWORK_CONFIG \
             -p 8001:80 \
             -v $BASE_PATH/var/www/html:/var/www/html:Z \
             -v $BASE_PATH/var/logs/nginx:/var/log/nginx:Z \
@@ -88,21 +143,81 @@ case "$1" in
         if podman ps | grep -q $CONTAINER_NAME; then
             podman ps | grep $CONTAINER_NAME
             echo ""
-            echo "🌐 Application URLs (in pod):"
+            
+            # Get container IP
+            CONTAINER_IP=$(podman inspect $CONTAINER_NAME --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || echo "unknown")
+            if [ "$CONTAINER_IP" != "unknown" ] && [ ! -z "$CONTAINER_IP" ]; then
+                echo "📍 Container IP: $CONTAINER_IP"
+                if [ "$CONTAINER_IP" = "$WWWAPP_IP" ]; then
+                    echo "✅ Static IP assigned correctly"
+                fi
+            fi
+            
+            # Check if port is actually listening
+            if netstat -tlnp | grep -q :8001; then
+                echo "✅ Port 8001 is listening"
+            else
+                echo "❌ Port 8001 is NOT listening"
+            fi
+            
+            echo ""
+            echo "🌐 Application URLs (external access):"
             echo "   • Main App: http://$(hostname -I | awk '{print $1}'):8001"
             echo "   • URL Health Check: http://$(hostname -I | awk '{print $1}'):8001/urlcheck/"
             echo "   • Test Page: http://$(hostname -I | awk '{print $1}'):8001/index.php"
-            echo " "
-            echo "🌐 Application URLs (from server:"
+            echo ""
+            echo "🌐 Application URLs (from server):"
             echo "   • Main App: curl -v http://localhost:8001/"
             echo "   • URL Health Check: curl -v http://localhost:8001/urlcheck/"
             echo "   • Test Page: curl -v http://localhost:8001/index.php"
+            echo "   • Health Check: curl -v http://localhost:8001/health"
+            
+            # If on custom network, show internal communication
+            if [ "$CONTAINER_IP" != "unknown" ] && [ ! -z "$CONTAINER_IP" ]; then
+                echo ""
+                echo "🔗 Internal Network Access (from other containers):"
+                echo "   • curl http://$CONTAINER_IP/"
+                echo "   • curl http://$CONTAINER_IP/health"
+                echo "   • curl http://$CONTAINER_IP/urlcheck/"
+            fi
+            
+            echo ""
+            echo "🔍 Debug Commands:"
+            echo "   $0 logs          # View container logs"
+            echo "   $0 shell         # Enter container"
+            echo "   $0 nginx-logs    # View nginx access logs"
+            echo "   $0 error-logs    # View nginx error logs"
+            echo "   $0 network-info  # Show network details"
             echo ""
             
         else
             echo "❌ Container is not running"
             echo "Recent containers:"
             podman ps -a | grep $CONTAINER_NAME | head -3
+            echo ""
+            echo "🚀 Start Commands:"
+            echo "   $0 start         # Start with custom network (recommended)"
+            echo "   $0 start-bridge  # Start with bridge network"
+            echo "   $0 start-debug   # Start in foreground (see errors)"
+            echo "   $0 rebuild       # Rebuild and start"
+        fi
+        ;;
+    
+    "network-info")
+        echo "🌐 Network Information:"
+        echo ""
+        echo "📡 Available Networks:"
+        podman network ls
+        echo ""
+        if podman network ls | grep -q $NETWORK_NAME; then
+            echo "📋 Custom Network Details:"
+            podman network inspect $NETWORK_NAME
+            echo ""
+            echo "🔗 Containers on $NETWORK_NAME:"
+            podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Networks}}" --filter network=$NETWORK_NAME
+        else
+            echo "❌ Custom network '$NETWORK_NAME' not found"
+            echo "📡 Create it with: ./setup-network.sh create"
         fi
         ;;
     
@@ -169,6 +284,8 @@ case "$1" in
         echo "   • Container Name: $CONTAINER_NAME"
         echo "   • Port: 8001"
         echo "   • Base Path: $BASE_PATH"
+        echo "   • Network: $NETWORK_NAME"
+        echo "   • Static IP: $WWWAPP_IP"
         echo ""
         echo "📁 Directory Structure:"
         echo "   • App Files: $BASE_PATH/var/www/html/"
@@ -180,6 +297,11 @@ case "$1" in
         echo "   • Main: http://server:8001/"
         echo "   • Health Monitor: http://server:8001/urlcheck/"
         echo "   • Public Status: http://server:8001/urlcheck/public.php"
+        echo ""
+        echo "🔗 Network Configuration:"
+        echo "   • Network: $NETWORK_NAME"
+        echo "   • Static IP: $WWWAPP_IP"
+        echo "   • Subnet: 10.10.10.0/24"
         ;;
     
     "check-files")
@@ -201,11 +323,15 @@ case "$1" in
     *)
         echo "🐳 WWWApp (Website Health Monitor) - Podman Management"
         echo ""
-        echo "Usage: $0 {build|start|start-debug|stop|restart|status|logs|shell|test-app|info|check-files|clean|rebuild}"
+        echo "Usage: $0 {build|start|start-bridge|start-debug|stop|restart|status|logs|shell|test-app|info|check-files|clean|rebuild|network-info}"
         echo ""
-        echo "Commands:"
+        echo "Network Commands:"
+        echo "  start        - Start with custom network (IP: $WWWAPP_IP)"
+        echo "  start-bridge - Start with default bridge network"
+        echo "  network-info - Show network information"
+        echo ""
+        echo "Container Commands:"
         echo "  build        - Build the WWWApp image"
-        echo "  start        - Start the container"
         echo "  start-debug  - Start in foreground (for debugging)"
         echo "  stop         - Stop the container"
         echo "  restart      - Restart the container"
@@ -223,6 +349,11 @@ case "$1" in
         echo "  error-logs      - Show nginx error logs"
         echo "  supervisor-logs - Show supervisor logs"
         echo ""
+        echo "Network Configuration:"
+        echo "  📡 Network Name: $NETWORK_NAME"
+        echo "  📍 Static IP: $WWWAPP_IP"
+        echo "  🌐 Subnet: 10.10.10.0/24"
+        echo ""
         echo "Application Structure:"
         echo "  📁 $BASE_PATH/var/www/html/         - Main web directory"
         echo "  📁 $BASE_PATH/var/www/html/urlcheck/ - Health monitor app"
@@ -233,8 +364,9 @@ case "$1" in
         echo "  🌐 http://server:8001/urlcheck/      - Health monitor"
         echo ""
         echo "Examples:"
-        echo "  $0 build && $0 start"
-        echo "  $0 test-app"
-        echo "  $0 check-files"
+        echo "  ./setup-network.sh create  # Create custom network first"
+        echo "  $0 build && $0 start       # Build and start with static IP"
+        echo "  $0 test-app                # Test all endpoints"
+        echo "  $0 network-info            # Show network details"
         ;;
 esac

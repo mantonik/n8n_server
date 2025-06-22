@@ -1,0 +1,25 @@
+Application network Structure 
+
+application is running as user 
+
+user: appusr ID: 10001
+Group: grapp ID: 10001
+
+user home 
+/data/docker/appusr
+
+application folder 
+
+/data/docker/appusr/
+    bin
+        dockerfiles
+    app
+        nginx_php
+        haproxy
+        n8n
+        posgress
+    etc
+    
+
+
+
