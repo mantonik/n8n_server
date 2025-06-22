@@ -91,6 +91,7 @@ chmod 755 ~/bin/n8n_server/bin/dockerfile/www_php_app/build.sh
 chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
 \cp -r n8n_server/server-config/data/* /data
 
+find /root/bin/n8n_server/bin -name "*.sh" -exec chmod 755 {} \; -print
 
 find ~/bin/n8n_server -name "*.sh" -exec chmod 755 {} \;
 
@@ -108,8 +109,14 @@ curl -v http://localhost:8001/t.html
 ls -lrt /data/docker/wwwapp/etc/nginx
 
 
-
-
 ll /data/nginx/html/urlcheck/
 chmod 755 /data/nginx/html/urlcheck
 chmod 644 /data/nginx/html/urlcheck/*
+
+#copy nginx files 
+cd /etc/nginx
+\cp /root/bin/n8n_server/server-config/etc/nginx/nginx.conf ./
+service nginx stop 
+serivce nginx start 
+
+

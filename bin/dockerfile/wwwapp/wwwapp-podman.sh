@@ -8,7 +8,7 @@ IMAGE_NAME="wwwapp"
 CONTAINER_NAME="wwwapp"
 BASE_PATH="/data/docker/wwwapp"
 NETWORK_NAME="app-network"
-WWWAPP_IP="10.10.10.21"
+WWWAPP_IP="10.101.10.21"
 
 case "$1" in
     "build")
@@ -301,7 +301,7 @@ case "$1" in
         echo "🔗 Network Configuration:"
         echo "   • Network: $NETWORK_NAME"
         echo "   • Static IP: $WWWAPP_IP"
-        echo "   • Subnet: 10.10.10.0/24"
+        echo "   • Subnet: 10.101.10.0/24"
         ;;
     
     "check-files")
@@ -352,7 +352,7 @@ case "$1" in
         echo "Network Configuration:"
         echo "  📡 Network Name: $NETWORK_NAME"
         echo "  📍 Static IP: $WWWAPP_IP"
-        echo "  🌐 Subnet: 10.10.10.0/24"
+        echo "  🌐 Subnet: 10.101.10.0/24"
         echo ""
         echo "Application Structure:"
         echo "  📁 $BASE_PATH/var/www/html/         - Main web directory"
