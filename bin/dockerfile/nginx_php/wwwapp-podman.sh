@@ -38,7 +38,7 @@ case "$1" in
             -v $BASE_PATH/var/logs/nginx:/var/log/nginx:Z \
             -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \
             -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
-            -v $BASE_PATH/etc/nginx/default.conf:/etc/nginx/default.conf:Z \
+            -v $BASE_PATH/etc/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:Z \
             --restart unless-stopped \
             $IMAGE_NAME
         
@@ -66,7 +66,7 @@ case "$1" in
             -v $BASE_PATH/var/logs/nginx:/var/log/nginx:Z \
             -v $BASE_PATH/var/logs/supervisor:/var/log/supervisor:Z \
             -v $BASE_PATH/etc/nginx/nginx.conf:/etc/nginx/nginx.conf:Z \
-            -v $BASE_PATH/etc/nginx/default.conf:/etc/nginx/ndefault.conf:Z \
+            -v $BASE_PATH/etc/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:Z \
             $IMAGE_NAME
         ;;
     
