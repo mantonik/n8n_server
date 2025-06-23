@@ -93,8 +93,6 @@ chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
 
 find /root/bin/n8n_server/bin -name "*.sh" -exec chmod 755 {} \; -print
 
-find ~/bin/n8n_server -name "*.sh" -exec chmod 755 {} \;
-
 #Fix file permissions
 find /data/docker -type d -exec chmod 755 {} \; -print
 find /data/docker -type f -exec chmod 644 {} \; -print
@@ -108,6 +106,11 @@ cd /root/bin/n8n_server/bin/dockerfile/wwwapp
 curl -v http://localhost:8001/t.html
 ls -lrt /data/docker/wwwapp/etc/nginx
 
+ls -la /data/docker/wwwapp/var/www/html/urlcheck/
+chmod 755 /data/docker/wwwapp/var/www
+ls -la /data/docker/wwwapp/var/www/html/urlcheck/
+
+
 
 ll /data/nginx/html/urlcheck/
 chmod 755 /data/nginx/html/urlcheck
@@ -117,6 +120,7 @@ chmod 644 /data/nginx/html/urlcheck/*
 cd /etc/nginx
 \cp /root/bin/n8n_server/server-config/etc/nginx/nginx.conf ./
 service nginx stop 
-serivce nginx start 
+service nginx start 
 
 
+/root/bin/n8n_server/bin/dockerfile/wwwapp/wwwapp-podman.sh start
