@@ -103,6 +103,7 @@ cd /root/bin/n8n_server/bin/dockerfile/wwwapp
 ./wwwapp-podman.sh build
 ./wwwapp-podman.sh start
 ./wwwapp-podman.sh status
+./wwwapp-podman.sh restart
 curl -v http://localhost:8001/t.html
 ls -lrt /data/docker/wwwapp/etc/nginx
 
@@ -118,9 +119,15 @@ chmod 644 /data/nginx/html/urlcheck/*
 
 #copy nginx files 
 cd /etc/nginx
-\cp /root/bin/n8n_server/server-config/etc/nginx/nginx.conf ./
+\cp /root/bin/n8n_server/server-config/etc/nginx/* /etc/nginx/
 service nginx stop 
 service nginx start 
 
 
 /root/bin/n8n_server/bin/dockerfile/wwwapp/wwwapp-podman.sh start
+
+/root/bin/n8n_server/bin/dockerfile/wwwapp/wwwapp-podman.sh restart
+
+
+tail -f /var/log/nginx/*
+
