@@ -120,6 +120,7 @@ chmod 644 /data/nginx/html/urlcheck/*
 #copy nginx files 
 cd /etc/nginx
 \cp /root/bin/n8n_server/server-config/etc/nginx/* /etc/nginx/
+\cp /root/bin/n8n_server/server-config/etc/nginx/conf.d/urlcheck.conf /etc/nginx/conf.d/
 service nginx stop 
 service nginx start 
 
