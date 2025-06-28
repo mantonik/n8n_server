@@ -15,17 +15,19 @@ find $HOME/bin/n8n_server/bin -name "*.sh" -exec chmod 755 {} \; -print
 #chmod 755 ~/bin/n8n_server/bin/dockerfile/www_php_app/build.sh
 #chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
 
-echo "Copy /data files"
-\cp -r n8n_server/server-config/data/* /data
+# Prepare for update 
+rm /etc/nginx/conf.d/*.conf
 
+echo "Copy server-config data to server configuration"
+\cp -r n8n_server/server-config/* /data
+
+#Setup permissions
 echo "Update permissions for /data files directory 755, files 644"
 find /data -type d -exec chmod 755 {} \; -print
 find /data -type f -exec chmod 644 {} \; -print
 
+find /usr/bin/*.sh -type f -exec chmod 755 {} \; -print
 
-echo "Update nginx files"
-rm /etc/nginx/conf.d/*.conf
-\cp -R /root/bin/n8n_server/server-config/etc/nginx/* /etc/nginx/
 echo "-------------"
 echo " Nginx version file:"
 find /etc/nginx -name "*.conf" -exec sh -c 'echo "=== $1 ==="; grep "# Version: \|# ver: " "$1" 2>/dev/null || echo "No version found"' _ {} \;

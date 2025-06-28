@@ -16,4 +16,7 @@ umask 0027
 
 export PS1='\[\033[1;36m\]$PWD\[\033[0m\]\n\[\033[1;32m\]\u@\h\[\033[0m\]> '
 
+PATH=$PATH:/usr/bin
+export PATH
+
 # END
