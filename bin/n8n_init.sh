@@ -6,7 +6,7 @@ dnf update
 #Install docker 
 # install nginx
 
-dnf install -y docker nginx policycoreutils-python-utils 
+dnf install -y docker nginx policycoreutils-python-utils mysql mysql-shell
 
 # alternative for docker 
 #podman-compose
