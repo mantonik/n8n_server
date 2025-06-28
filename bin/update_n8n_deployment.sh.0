@@ -19,14 +19,13 @@ find $HOME/bin/n8n_server/bin -name "*.sh" -exec chmod 755 {} \; -print
 rm /etc/nginx/conf.d/*.conf
 
 echo "Copy server-config data to server configuration"
-\cp -r $HOME/bin/n8n_server/server-config/* /data
+\cp -r $HOME/bin/n8n_server/server-config/* /
 
 #Setup permissions
 echo "Update permissions for /data files directory 755, files 644"
 find /data -type d -exec chmod 755 {} \;
 find /data -type f -exec chmod 644 {} \; 
-
-find /usr/bin/*.sh -type f -exec chmod 755 {} \; -print
+find /usr/bin/*.sh -type f -exec chmod 755 {} \; 
 
 echo "-------------"
 echo " Nginx version file:"
@@ -36,6 +35,5 @@ echo "Restart nginx"
 /bin/systemctl stop nginx.service
 /bin/systemctl start nginx.service
 
-
-
 echo "Deployment completed"
+echo ""
