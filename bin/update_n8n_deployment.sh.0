@@ -23,8 +23,8 @@ echo "Copy server-config data to server configuration"
 
 #Setup permissions
 echo "Update permissions for /data files directory 755, files 644"
-find /data -type d -exec chmod 755 {} \; -print
-find /data -type f -exec chmod 644 {} \; -print
+find /data -type d -exec chmod 755 {} \;
+find /data -type f -exec chmod 644 {} \; 
 
 find /usr/bin/*.sh -type f -exec chmod 755 {} \; -print
 
