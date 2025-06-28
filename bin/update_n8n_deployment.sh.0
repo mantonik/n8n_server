@@ -28,5 +28,7 @@ echo " Nginx version file:"
 grep "# ver: " /etc/nginx/nginx.conf
 echo "-------------"
 echo "Restart nginx"
-service nginx stop 
-service nginx start 
+/bin/systemctl stop nginx.service
+/bin/systemctl start nginx.service
+
+echo "Deployment completed"
