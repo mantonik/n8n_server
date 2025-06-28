@@ -1,7 +1,7 @@
 #Custom Profile file
 # 1.0 initial version
 # 1.1 add alias
-# 1/2 update path 
+# 1.2 update path 
 ###################
 version=1.2
 

@@ -19,7 +19,7 @@ find $HOME/bin/n8n_server/bin -name "*.sh" -exec chmod 755 {} \; -print
 rm /etc/nginx/conf.d/*.conf
 
 echo "Copy server-config data to server configuration"
-\cp -r n8n_server/server-config/* /data
+\cp -r $HOME/bin/n8n_server/server-config/* /data
 
 #Setup permissions
 echo "Update permissions for /data files directory 755, files 644"
