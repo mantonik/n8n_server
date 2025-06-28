@@ -1,4 +1,5 @@
 #!/bin/bash
+# version 2 - update permissions for folder /data
 cd ~/bin
 rm -rf n8n_server
 wget https://github.com/mantonik/n8n_server/archive/refs/heads/cloudflare.zip
@@ -18,10 +19,9 @@ echo "Copy /data files"
 \cp -r n8n_server/server-config/data/* /data
 
 echo "Update permissions for /data files directory 755, files 644"
-find /data/docker -type d -exec chmod 755 {} \; -print
-find /data/docker -type f -exec chmod 644 {} \; -print
-find /data/nginx -type d -exec chmod 755 {} \; -print
-find /data/nginx -type f -exec chmod 644 {} \; -print
+find /data -type d -exec chmod 755 {} \; -print
+find /data -type f -exec chmod 644 {} \; -print
+
 
 echo "Update nginx files"
 rm /etc/nginx/conf.d/*.conf
