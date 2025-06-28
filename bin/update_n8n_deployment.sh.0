@@ -22,10 +22,11 @@ find /data/docker -type d -exec chmod 755 {} \; -print
 find /data/docker -type f -exec chmod 644 {} \; -print
 
 echo "Update nginx files"
+rm /etc/nginx/conf.d/*.conf
 \cp -R /root/bin/n8n_server/server-config/etc/nginx/* /etc/nginx/
 echo "-------------"
 echo " Nginx version file:"
-grep "# ver: " /etc/nginx/nginx.conf
+find /etc/nginx -name "*.conf" -exec sh -c 'echo "=== $1 ==="; grep "# Version: \|# ver: " "$1" 2>/dev/null || echo "No version found"' _ {} \;
 echo "-------------"
 echo "Restart nginx"
 /bin/systemctl stop nginx.service
