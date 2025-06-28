@@ -121,7 +121,7 @@ echo " Check n8n site"
 curl http://localhost/
 echo "-------------------------------------"
 echo "Check urlcheck-v1"
-curl http://localhost/urlcheck-v1
+curl http://localhost/urlcheck-v1/login.php
 echo ""
 
 ----

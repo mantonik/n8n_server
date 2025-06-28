@@ -32,4 +32,6 @@ echo "Restart nginx"
 /bin/systemctl stop nginx.service
 /bin/systemctl start nginx.service
 
+
+
 echo "Deployment completed"
