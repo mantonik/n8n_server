@@ -20,6 +20,8 @@ echo "Copy /data files"
 echo "Update permissions for /data files directory 755, files 644"
 find /data/docker -type d -exec chmod 755 {} \; -print
 find /data/docker -type f -exec chmod 644 {} \; -print
+find /data/nginx -type d -exec chmod 755 {} \; -print
+find /data/nginx -type f -exec chmod 644 {} \; -print
 
 echo "Update nginx files"
 rm /etc/nginx/conf.d/*.conf
