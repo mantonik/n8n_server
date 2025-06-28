@@ -1,0 +1,15 @@
+SET in DNS 
+
+
+ST Jose datacenter LB: 192.9.139.89
+
+dmseo03.dmcloudarchitec.com     localhost:5678 n8n in docker
+devurlcheck.dmcloudarchitect.com   /data/nginx/html/urlcheck-v1 
+devreport.dmcloudarchitect.com     /data/nginx/html/report
+devapps.dmcloudarchitect.com       /data/nginx/html/apps
+
+
+
+------------
+Not used yet but set in DNS
+automation.dmcloudarchitect.com
