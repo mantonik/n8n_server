@@ -77,6 +77,9 @@ https://developers.cloudflare.com/fundamentals/api/get-started/create-token/
 -----
 deploy for nginx application changes
 
+-------
+Create script to update server
+-------
 
 cd ~/bin
 rm -rf n8n_server
@@ -87,16 +90,42 @@ mv n8n_server-cloudflare n8n_server
 chmod 755 ~/bin/n8n_server/bin/*.sh
 #copy nginx files 
 \cp -r ~/bin/n8n_server/server-config/data/nginx/* /data/nginx
-chmod 755 ~/bin/n8n_server/bin/dockerfile/www_php_app/build.sh
-chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
 
+echo "Update all .sh files with exec permissions"
+find $HOME/bin/n8n_server/bin -name "*.sh" -exec chmod 755 {} \; -print
+#chmod 755 ~/bin/n8n_server/bin/dockerfile/www_php_app/build.sh
+#chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
+
+echo "Copy /data files"
 \cp -r n8n_server/server-config/data/* /data
 
-find /root/bin/n8n_server/bin -name "*.sh" -exec chmod 755 {} \; -print
-
-#Fix file permissions
+echo "Update permissions for /data files directory 755, files 644"
 find /data/docker -type d -exec chmod 755 {} \; -print
 find /data/docker -type f -exec chmod 644 {} \; -print
+
+echo "Update nginx files"
+\cp -R /root/bin/n8n_server/server-config/etc/nginx/* /etc/nginx/
+echo "-------------"
+echo " Nginx version file:"
+grep "# ver: " /etc/nginx/nginx.conf
+echo "-------------"
+echo "Restart nginx"
+service nginx stop 
+service nginx start 
+
+
+ll /data/nginx/html/urlcheck/
+
+echo "Check sites"
+echo " Check n8n site"
+curl http://localhost/
+echo "-------------------------------------"
+echo "Check urlcheck-v1"
+curl http://localhost/urlcheck-v1
+echo ""
+
+----
+
 
 #rebuild webapp
 cd /root/bin/n8n_server/bin/dockerfile/wwwapp
@@ -114,17 +143,7 @@ ls -la /data/docker/wwwapp/var/www/html/urlcheck/
 
 
 
-ll /data/nginx/html/urlcheck/
-chmod 755 /data/nginx/html/urlcheck
-chmod 644 /data/nginx/html/urlcheck/*:q
 
-
-#copy nginx files 
-cd /etc/nginx
-\cp /root/bin/n8n_server/server-config/etc/nginx/* /etc/nginx/
-\cp /root/bin/n8n_server/server-config/etc/nginx/conf.d/urlcheck.conf /etc/nginx/conf.d/
-service nginx stop 
-service nginx start 
 
 
 /root/bin/n8n_server/bin/dockerfile/wwwapp/wwwapp-podman.sh start
