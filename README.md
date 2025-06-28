@@ -115,7 +115,8 @@ ls -la /data/docker/wwwapp/var/www/html/urlcheck/
 
 ll /data/nginx/html/urlcheck/
 chmod 755 /data/nginx/html/urlcheck
-chmod 644 /data/nginx/html/urlcheck/*
+chmod 644 /data/nginx/html/urlcheck/*:q
+
 
 #copy nginx files 
 cd /etc/nginx
