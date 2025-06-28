@@ -7,7 +7,7 @@ dmseo03.dmcloudarchitec.com     localhost:5678 n8n in docker
 devurlcheck.dmcloudarchitect.com   /data/nginx/html/urlcheck-v1 
 devreport.dmcloudarchitect.com     /data/nginx/html/report
 devapps.dmcloudarchitect.com       /data/nginx/html/apps
-
+devdbmonitoring.dmcloudarchitect.com /data/nginx/html/dbmonitoring
 
 
 ------------
