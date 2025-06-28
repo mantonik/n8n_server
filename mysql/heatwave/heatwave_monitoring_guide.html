@@ -1,0 +1,305 @@
+# HeatWave Change Monitoring System v2.0
+## Complete Deployment Guide & Reference
+
+### 🚀 Quick Deployment
+
+**1. Deploy the System**
+```bash
+# Method 1: Direct execution
+mysql -u root -p < heatwave_monitoring_deployment.sql
+
+# Method 2: From MySQL console
+mysql> USE support_heatwave;
+mysql> SOURCE /path/to/heatwave_monitoring_deployment.sql;
+```
+
+**2. Verify Deployment**
+```sql
+-- Check system status
+SELECT * FROM vw_monitoring_dashboard;
+
+-- Verify monitoring is working
+CALL detect_all_rapid_changes();
+
+-- Check for any alerts
+CALL check_memory_alerts();
+```
+
+**3. Configure for Your Environment**
+```sql
+-- For Production (64GB cluster)
+CALL update_cluster_memory(64);
+
+-- For QA (32GB cluster) - already set as default
+CALL update_cluster_memory(32);
+
+-- Enable event scheduler if not already enabled
+SET GLOBAL event_scheduler = ON;
+```
+
+---
+
+## 📊 System Overview
+
+### What It Monitors
+- **SECONDARY_ENGINE=RAPID** changes across all schemas
+- **SECONDARY_LOAD** changes from 0→1 (critical memory alerts)
+- **Actual memory usage** vs configuration settings
+- **Real-time HeatWave cluster utilization**
+
+### Key Benefits
+- ✅ **Universal**: Works in any MySQL 8.4.4+ environment
+- ✅ **Automated**: Runs every 5 minutes, cleans up daily
+- ✅ **Comprehensive**: Tracks configuration vs reality
+- ✅ **Production-Ready**: Optimized for performance
+- ✅ **Zero-Impact**: Lightweight monitoring with minimal overhead
+
+---
+
+## 🎯 Critical Alerts to Watch
+
+### 🚨 LOAD_ENABLED Alert
+**Trigger**: When `SECONDARY_LOAD` changes from 0 → 1
+**Impact**: Table will start consuming HeatWave memory automatically
+**Response**: Verify if this change was intentional
+
+### 🆕 NEW_RAPID Alert  
+**Trigger**: When table gets `SECONDARY_ENGINE=RAPID`
+**Impact**: Table becomes eligible for HeatWave loading
+**Response**: Check if `SECONDARY_LOAD` setting is appropriate
+
+### ⚡ Memory Consumption Alert
+**Trigger**: When actual memory usage exceeds thresholds
+**Impact**: Cluster memory may be running low
+**Response**: Review loaded tables and optimize
+
+---
+
+## 🔧 Essential Commands
+
+### Daily Operations
+```sql
+-- Quick system status
+SELECT * FROM vw_monitoring_dashboard;
+
+-- Check recent alerts (last 6 hours)
+CALL check_rapid_alerts();
+
+-- Comprehensive memory analysis
+CALL check_memory_alerts();
+
+-- Force immediate monitoring check
+CALL detect_all_rapid_changes();
+```
+
+### Configuration Management
+```sql
+-- View all configuration
+CALL show_monitoring_config();
+
+-- Update cluster memory size
+CALL update_cluster_memory(64); -- for 64GB cluster
+
+-- Change data retention period
+CALL update_monitoring_config('retention_days', '120');
+
+-- Change monitoring frequency
+CALL update_monitoring_config('monitoring_interval_minutes', '10');
+```
+
+### Memory Analysis
+```sql
+-- Current RAPID tables and their settings
+SELECT table_schema, table_name, secondary_load 
+FROM table_state_current 
+WHERE secondary_engine = 'RAPID'
+ORDER BY table_schema, table_name;
+
+-- Detailed memory usage analysis
+SELECT * FROM vw_heatwave_memory_analysis
+ORDER BY memory_gb DESC
+LIMIT 20;
+
+-- Tables configured vs actually loaded
+SELECT 
+    'Configured for auto-load' as type,
+    COUNT(*) as count
+FROM table_state_current 
+WHERE secondary_engine = 'RAPID' AND secondary_load = 1
+UNION ALL
+SELECT 
+    'Actually loaded in memory',
+    COUNT(*)
+FROM performance_schema.rpd_tables t_id
+JOIN performance_schema.rpd_table_id tid ON t_id.ID = tid.ID
+WHERE t_id.LOAD_STATUS = 'AVAIL_RPDGSTABSTATE';
+```
+
+### Cleanup Operations
+```sql
+-- Manual cleanup (keep last 30 days)
+CALL manual_cleanup(30);
+
+-- View cleanup history
+SELECT * FROM monitoring_cleanup_log 
+ORDER BY cleanup_time DESC 
+LIMIT 10;
+```
+
+---
+
+## 📋 Database Objects Reference
+
+### Core Tables
+- **`c_monitoring_options`** - System configuration
+- **`table_state_current`** - Current state of all monitored tables  
+- **`rapid_changes_detailed`** - Audit trail of all changes
+- **`monitoring_cleanup_log`** - Cleanup operation history
+
+### Key Views
+- **`vw_monitoring_dashboard`** - Main system status dashboard
+- **`vw_heatwave_memory_analysis`** - Detailed memory usage breakdown
+- **`vw_heatwave_secondary_load_summary`** - All tables with SECONDARY_LOAD
+
+### Essential Procedures
+- **`detect_all_rapid_changes()`** - Main monitoring procedure
+- **`check_memory_alerts()`** - Comprehensive memory analysis
+- **`check_rapid_alerts()`** - Recent change alerts
+- **`update_cluster_memory(gb)`** - Update cluster size
+- **`cleanup_monitoring_data()`** - Data retention cleanup
+
+### Automated Events
+- **`enhanced_rapid_monitoring`** - Runs every 5 minutes
+- **`automatic_cleanup`** - Runs daily at 2 AM
+
+---
+
+## ⚙️ Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `cluster_memory_gb` | 32 | Total HeatWave cluster memory |
+| `retention_days` | 90 | Data retention period |
+| `monitoring_interval_minutes` | 5 | Monitoring frequency |
+| `cleanup_enabled` | TRUE | Enable automatic cleanup |
+| `cleanup_interval_hours` | 24 | Cleanup frequency |
+| `max_records_per_cleanup` | 10000 | Max cleanup batch size |
+
+---
+
+## 🔍 Troubleshooting
+
+### Event Scheduler Not Running
+```sql
+-- Check status
+SELECT @@global.event_scheduler;
+
+-- Enable if OFF
+SET GLOBAL event_scheduler = ON;
+
+-- Verify events are created
+SHOW EVENTS IN support_heatwave;
+```
+
+### No Tables Being Monitored
+```sql
+-- Check if tables have SECONDARY_LOAD in CREATE_OPTIONS
+SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS 
+FROM information_schema.tables 
+WHERE CREATE_OPTIONS LIKE '%SECONDARY_LOAD=%'
+LIMIT 10;
+
+-- Force baseline creation
+CALL detect_all_rapid_changes();
+```
+
+### High Memory Usage Alerts
+```sql
+-- Identify largest tables
+SELECT * FROM vw_heatwave_memory_analysis 
+ORDER BY memory_gb DESC 
+LIMIT 10;
+
+-- Check cluster utilization
+SELECT 
+    ROUND(SUM(t_id.SIZE_BYTES) / (1024*1024*1024), 2) as used_gb,
+    CAST(get_config_value('cluster_memory_gb') AS DECIMAL) as total_gb,
+    ROUND(SUM(t_id.SIZE_BYTES) / (1024*1024*1024) / 
+          CAST(get_config_value('cluster_memory_gb') AS DECIMAL) * 100, 1) as utilization_pct
+FROM performance_schema.rpd_tables t_id
+JOIN performance_schema.rpd_table_id tid ON t_id.ID = tid.ID
+WHERE t_id.LOAD_STATUS = 'AVAIL_RPDGSTABSTATE';
+```
+
+### Performance Issues
+```sql
+-- Check cleanup logs for issues
+SELECT * FROM monitoring_cleanup_log 
+WHERE cleanup_status != 'SUCCESS'
+ORDER BY cleanup_time DESC;
+
+-- Verify index usage
+SHOW INDEX FROM table_state_current;
+SHOW INDEX FROM rapid_changes_detailed;
+```
+
+---
+
+## 🎯 Best Practices
+
+### 1. **Environment-Specific Configuration**
+```sql
+-- Production (64GB)
+CALL update_cluster_memory(64);
+
+-- QA (32GB) 
+CALL update_cluster_memory(32);
+
+-- Development (16GB)
+CALL update_cluster_memory(16);
+```
+
+### 2. **Regular Monitoring Schedule**
+- **Daily**: Check `vw_monitoring_dashboard`
+- **Weekly**: Review `check_memory_alerts()` 
+- **Monthly**: Verify cleanup operations
+
+### 3. **Alert Response Procedures**
+- **LOAD_ENABLED**: Verify change was intentional
+- **NEW_RAPID**: Check memory impact
+- **High utilization**: Review loaded tables
+
+### 4. **Maintenance Windows**
+```sql
+-- Before maintenance: capture current state
+SELECT * FROM vw_monitoring_dashboard;
+
+-- After maintenance: verify monitoring continues
+CALL detect_all_rapid_changes();
+```
+
+---
+
+## 📞 Support Information
+
+### System Information
+- **Version**: 2.0
+- **MySQL Compatibility**: 8.4.4+
+- **Schema**: `support_heatwave`
+- **Dependencies**: HeatWave performance_schema tables
+
+### Quick Health Check
+```sql
+-- Single query to verify system health
+SELECT 
+    (SELECT option_value FROM c_monitoring_options WHERE option_name = 'system_version') as version,
+    (SELECT COUNT(*) FROM table_state_current) as tables_monitored,
+    (SELECT COUNT(*) FROM table_state_current WHERE secondary_engine = 'RAPID') as rapid_tables,
+    (SELECT COUNT(*) FROM rapid_changes_detailed WHERE change_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as changes_24h,
+    @@global.event_scheduler as event_scheduler_status;
+```
+
+---
+
+*HeatWave Change Monitoring System v2.0 - Production Ready*  
+*Deployment completed successfully! 🎉*
