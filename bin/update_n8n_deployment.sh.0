@@ -1,0 +1,32 @@
+#!/bin/bash
+cd ~/bin
+rm -rf n8n_server
+wget https://github.com/mantonik/n8n_server/archive/refs/heads/cloudflare.zip
+unzip cloudflare.zip 
+rm -f cloudflare.zip
+mv n8n_server-cloudflare n8n_server
+chmod 755 ~/bin/n8n_server/bin/*.sh
+#copy nginx files 
+\cp -r ~/bin/n8n_server/server-config/data/nginx/* /data/nginx
+
+echo "Update all .sh files with exec permissions"
+find $HOME/bin/n8n_server/bin -name "*.sh" -exec chmod 755 {} \; -print
+#chmod 755 ~/bin/n8n_server/bin/dockerfile/www_php_app/build.sh
+#chmod 755 ~/bin/n8n_server/bin/dockerfile/nginx_php/*.sh
+
+echo "Copy /data files"
+\cp -r n8n_server/server-config/data/* /data
+
+echo "Update permissions for /data files directory 755, files 644"
+find /data/docker -type d -exec chmod 755 {} \; -print
+find /data/docker -type f -exec chmod 644 {} \; -print
+
+echo "Update nginx files"
+\cp -R /root/bin/n8n_server/server-config/etc/nginx/* /etc/nginx/
+echo "-------------"
+echo " Nginx version file:"
+grep "# ver: " /etc/nginx/nginx.conf
+echo "-------------"
+echo "Restart nginx"
+service nginx stop 
+service nginx start 
