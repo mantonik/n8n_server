@@ -16,5 +16,3 @@ SOURCE heatwave_monitoring_patch_03.sql;
 -- Step 5: Remove icons which caused problem with charse between different db versions
 SOURCE heatwave_monitoring_patch_04.sql;
 
--- Step 6: Restore vw_monitoring_dashboard and other essential views that got dropped
-SOURCE heatwave_monitoring_patch_05.sql;

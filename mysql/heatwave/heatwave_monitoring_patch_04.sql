@@ -6,8 +6,8 @@
 -- ===============================================================================================
 --
 -- PURPOSE: 
--- This patch removes all emoji icons from SELECT statements that cause UTF8 conversion warnings
--- Replaces emoji with simple text prefixes for better compatibility across different MySQL configs
+-- This patch removes all emoji icons from procedures that cause UTF8 conversion warnings
+-- DOES NOT DROP VIEWS - only updates procedures with emoji-free output
 --
 -- DEPLOYMENT:
 -- SOURCE /path/to/heatwave_monitoring_patch_04.sql;
@@ -17,11 +17,11 @@
 USE support_heatwave;
 
 SELECT 'HEATWAVE MONITORING PATCH 04 - UTF8 COMPATIBILITY' as patch_info;
-SELECT 'Removing emoji icons to prevent charset conversion warnings' as patch_purpose;
+SELECT 'Removing emoji icons from procedures only - NOT dropping views' as patch_purpose;
 SELECT CONCAT('Patch Time: ', NOW()) as patch_time;
 
 -- ===============================================================================================
--- UPDATE CORE MONITORING PROCEDURE - Remove emojis from output
+-- UPDATE CORE MONITORING PROCEDURE - Remove emojis from output (NO VIEW DROPS)
 -- ===============================================================================================
 
 DELIMITER //
@@ -212,66 +212,12 @@ END //
 DELIMITER ;
 
 -- ===============================================================================================
--- UPDATE VIEWS - Remove emojis from display text
--- ===============================================================================================
-
--- Update memory analysis view
-DROP VIEW IF EXISTS vw_heatwave_memory_analysis;
-
-CREATE VIEW vw_heatwave_memory_analysis AS
-SELECT 
-    tid.SCHEMA_NAME as table_schema,
-    tid.NAME as table_name,
-    t_id.LOAD_STATUS,
-    ROUND(t_id.SIZE_BYTES / (1024 * 1024), 2) as memory_mb,
-    ROUND(t_id.SIZE_BYTES / (1024 * 1024 * 1024), 2) as memory_gb,
-    t_id.LAST_QUERIED,
-    IFNULL(tsc.secondary_load, 'Unknown') as secondary_load_setting,
-    CASE 
-        WHEN tsc.secondary_load = 1 THEN '[AUTO] Auto-load enabled'
-        WHEN tsc.secondary_load = 0 THEN '[MANUAL] Autopilot/Manual'
-        ELSE '[UNKNOWN] Not monitored'
-    END as load_method
-FROM performance_schema.rpd_tables t_id
-JOIN performance_schema.rpd_table_id tid ON t_id.ID = tid.ID
-LEFT JOIN table_state_current tsc ON tid.SCHEMA_NAME = tsc.table_schema AND tid.NAME = tsc.table_name
-WHERE t_id.LOAD_STATUS = 'AVAIL_RPDGSTABSTATE'
-ORDER BY t_id.SIZE_BYTES DESC;
-
--- Update loaded tables view
-DROP VIEW IF EXISTS vw_heatwave_loaded_tables;
-
-CREATE VIEW vw_heatwave_loaded_tables AS
-SELECT
-    tid.SCHEMA_NAME AS table_schema,
-    tid.NAME AS table_name,
-    t_id.POOL_TYPE,
-    t_id.LOAD_STATUS,
-    ROUND(t_id.SIZE_BYTES / (1024 * 1024), 2) AS memory_used_mb,
-    ROUND(t_id.SIZE_BYTES / (1024 * 1024 * 1024), 2) AS memory_used_gb,
-    t_id.QUERY_COUNT,
-    t_id.LAST_QUERIED,
-    t_id.LOAD_END_TIMESTAMP,
-    -- Add configuration info from monitoring
-    IFNULL(tsc.secondary_load, 'Unknown') as secondary_load_setting,
-    CASE 
-        WHEN tsc.secondary_load = 1 THEN 'Auto-load'
-        WHEN tsc.secondary_load = 0 THEN 'Autopilot/Manual'
-        ELSE 'Not Monitored'
-    END as load_method
-FROM performance_schema.rpd_tables AS t_id
-JOIN performance_schema.rpd_table_id AS tid ON t_id.ID = tid.ID
-LEFT JOIN table_state_current tsc ON tid.SCHEMA_NAME = tsc.table_schema AND tid.NAME = tsc.table_name
-WHERE t_id.LOAD_STATUS = 'AVAIL_RPDGSTABSTATE'
-ORDER BY t_id.SIZE_BYTES DESC;
-
--- ===============================================================================================
--- UPDATE CONFIG TRACKING 
+-- UPDATE CONFIG TRACKING (NO VIEW CHANGES)
 -- ===============================================================================================
 
 -- Update version to reflect patch
 INSERT INTO c_monitoring_options (option_name, option_value, option_description) VALUES
-('patch_04_applied', 'TRUE', 'UTF8 compatibility patch applied - emojis removed')
+('patch_04_applied', 'TRUE', 'UTF8 compatibility patch applied - emojis removed from procedures only')
 ON DUPLICATE KEY UPDATE 
     option_value = 'TRUE',
     updated_at = CURRENT_TIMESTAMP;
@@ -288,10 +234,10 @@ WHERE option_name = 'system_version';
 -- ===============================================================================================
 
 SELECT '[PATCH] UTF8 Compatibility Patch 04 Applied Successfully!' as patch_status;
-SELECT '[INFO] All emoji icons removed from output text' as change_summary;
+SELECT '[INFO] Emoji icons removed from procedures only - views unchanged' as change_summary;
 SELECT '[INFO] System now compatible with UTF8MB3 and UTF8MB4 configurations' as compatibility;
 
--- Test the updated procedures
+-- Test the updated procedures (no view testing to avoid errors)
 SELECT '[TEST] Testing updated procedures...' as test_header;
 
 -- Test basic functionality
@@ -299,18 +245,10 @@ SELECT
     (SELECT option_value FROM c_monitoring_options WHERE option_name = 'system_version') as current_version,
     (SELECT option_value FROM c_monitoring_options WHERE option_name = 'patch_04_applied') as patch_04_status,
     (SELECT COUNT(*) FROM table_state_current) as tables_monitored,
-    '[OK] Patch verification complete' as status;
+    '[OK] Patch verification complete - procedures updated only' as status;
 
-SELECT '[COMPLETE] Ready to use - no more UTF8 conversion warnings!' as final_status;
-
--- Show clean output example
-SELECT '[EXAMPLE] Clean output without emojis:' as example_header;
-SELECT 
-    'System Status' as section,
-    'Version' as metric,
-    get_config_value('system_version') as value,
-    'No emoji icons - universal compatibility' as description;
+SELECT '[COMPLETE] Procedures updated - views preserved!' as final_status;
 
 -- ===============================================================================================
--- END OF PATCH 04
+-- END OF PATCH 04 - VIEWS PRESERVED
 -- ===============================================================================================
