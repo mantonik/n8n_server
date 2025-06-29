@@ -23,3 +23,6 @@ show tables;
 SOURCE heatwave_monitoring_patch_04.sql;
 show tables;
 
+-- Step 6: fix views and tables
+SOURCE heatwave_monitoring_patch_05.sql;
+show tables;
