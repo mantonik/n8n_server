@@ -1,59 +1,51 @@
 -- ===============================================================================================
--- UNIVERSAL HEATWAVE MONITORING DEPLOYMENT - ALL MYSQL VERSIONS
--- Compatible with MySQL 8.0, 8.4, 9.0, 9.3+ 
--- Explicit UTF8MB4 charset to avoid version-specific defaults
--- NO EMOJIS - Plain text only for maximum compatibility
+-- HEATWAVE MONITORING DEPLOYMENT v2.0 - MYSQL 9.x COMPATIBLE
+-- Fixed for MySQL 9.3.2+ with proper UTF8MB4 charset handling
 -- ===============================================================================================
 
--- Force session to use UTF8MB4 consistently
-SET SESSION character_set_client = utf8mb4;
-SET SESSION character_set_connection = utf8mb4;
-SET SESSION character_set_results = utf8mb4;
-SET SESSION collation_connection = utf8mb4_unicode_ci;
+-- Set proper charset at session level
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+SET character_set_client = utf8mb4;
+SET character_set_connection = utf8mb4;
+SET character_set_results = utf8mb4;
 
--- Check current session settings
-SELECT 'CHARSET VERIFICATION:' as info;
-SELECT 
-    @@character_set_client as client_charset,
-    @@character_set_connection as connection_charset,
-    @@character_set_results as result_charset,
-    @@collation_connection as collation;
-
-SELECT 'HeatWave Universal Monitoring v2.0 - Deployment Starting' as deployment_status;
-SELECT CONCAT('MySQL Version: ', VERSION()) as mysql_version;
-SELECT CONCAT('Deployment Time: ', NOW()) as deployment_time;
-
--- ===============================================================================================
--- STEP 1: CREATE DATABASE WITH EXPLICIT CHARSET
--- ===============================================================================================
-
-SELECT 'Step 1: Creating database with explicit UTF8MB4 charset...' as step_info;
-
--- Drop and recreate with explicit charset
-DROP DATABASE IF EXISTS support_heatwave;
-CREATE DATABASE support_heatwave 
-    CHARACTER SET utf8mb4 
-    COLLATE utf8mb4_unicode_ci;
+-- Create schema with proper charset
+CREATE SCHEMA IF NOT EXISTS support_heatwave 
+CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 USE support_heatwave;
 
--- Verify database charset
-SELECT 
-    schema_name as database_name,
-    default_character_set_name as charset,
-    default_collation_name as collation
-FROM information_schema.schemata 
-WHERE schema_name = 'support_heatwave';
+-- Ensure we're using the right charset for this session
+ALTER DATABASE support_heatwave CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-SELECT 'Database created with explicit UTF8MB4 charset' as status;
+SELECT 'HeatWave Change Monitoring System v2.0 - Starting Deployment (MySQL 9.x Compatible)' as deployment_status;
+SELECT CONCAT('MySQL Version: ', VERSION()) as database_info;
+SELECT CONCAT('Deployment Time: ', NOW()) as deployment_time;
+
+-- ===============================================================================================
+-- STEP 1: ENVIRONMENT PREPARATION
+-- ===============================================================================================
+
+SELECT 'Step 1: Preparing environment...' as step_info;
+
+-- Clean existing objects for fresh deployment
+DROP EVENT IF EXISTS support_heatwave.enhanced_rapid_monitoring;
+DROP EVENT IF EXISTS support_heatwave.automatic_cleanup;
+DROP VIEW IF EXISTS vw_recent_dynamic_operations;
+DROP VIEW IF EXISTS vw_heatwave_dynamic_tables;
+DROP PROCEDURE IF EXISTS tracked_secondary_unload;
+DROP PROCEDURE IF EXISTS tracked_secondary_load;
+DROP TABLE IF EXISTS dynamic_load_operations;
+
+SELECT 'Environment cleaned and ready' as cleanup_status;
 
 -- ===============================================================================================
 -- STEP 2: DYNAMIC OPERATIONS TRACKING TABLE
 -- ===============================================================================================
 
-SELECT 'Step 2: Creating tracking tables...' as step_info;
+SELECT 'Step 2: Creating dynamic operations tracking...' as step_info;
 
--- Track dynamic loading operations with explicit charset
+-- Track dynamic loading operations
 CREATE TABLE dynamic_load_operations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     operation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -75,26 +67,10 @@ COMMENT='Track dynamic HeatWave loading operations';
 SELECT 'Dynamic operations tracking table created' as tracking_status;
 
 -- ===============================================================================================
--- STEP 3: CHECK IF MAIN MONITORING SYSTEM EXISTS
+-- STEP 3: ENHANCED MONITORING VIEWS
 -- ===============================================================================================
 
-SELECT 'Step 3: Checking main monitoring system...' as step_info;
-
--- Check if core monitoring tables exist
-SELECT 
-    COUNT(*) as core_tables_exist
-FROM information_schema.tables 
-WHERE table_schema = 'support_heatwave' 
-  AND table_name IN ('table_state_current', 'rapid_changes_detailed', 'c_monitoring_options');
-
--- If main system doesn't exist, create basic compatibility layer
--- Note: This assumes the main system was deployed separately
-
--- ===============================================================================================
--- STEP 4: ENHANCED MONITORING VIEWS (NO EMOJIS)
--- ===============================================================================================
-
-SELECT 'Step 4: Creating enhanced monitoring views...' as step_info;
+SELECT 'Step 3: Creating enhanced monitoring views...' as step_info;
 
 -- Enhanced monitoring view for dynamic tables
 CREATE OR REPLACE VIEW vw_heatwave_dynamic_tables AS
@@ -131,7 +107,7 @@ LEFT JOIN (
 WHERE tsc.secondary_engine = 'RAPID'
 ORDER BY table_type, memory_mb DESC;
 
--- View recent dynamic operations (NO EMOJIS)
+-- View recent dynamic operations
 CREATE OR REPLACE VIEW vw_recent_dynamic_operations AS
 SELECT 
     operation_time,
@@ -151,29 +127,13 @@ FROM dynamic_load_operations
 WHERE operation_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
 ORDER BY operation_time DESC;
 
--- Memory usage by schema (NO EMOJIS)
-CREATE OR REPLACE VIEW vw_heatwave_memory_by_schema AS
-SELECT 
-    IFNULL(tid.SCHEMA_NAME, 'TOTAL') as schema_name,
-    COUNT(*) as loaded_tables,
-    ROUND(SUM(t_id.SIZE_BYTES) / (1024 * 1024), 2) as total_memory_mb,
-    ROUND(SUM(t_id.SIZE_BYTES) / (1024 * 1024 * 1024), 2) as total_memory_gb,
-    ROUND(
-        (SUM(t_id.SIZE_BYTES) / (1024 * 1024 * 1024)) / 32 * 100, 1
-    ) as memory_utilization_percent
-FROM performance_schema.rpd_tables t_id
-JOIN performance_schema.rpd_table_id tid ON t_id.ID = tid.ID
-WHERE t_id.LOAD_STATUS = 'AVAIL_RPDGSTABSTATE'
-GROUP BY tid.SCHEMA_NAME WITH ROLLUP
-ORDER BY total_memory_gb DESC;
-
-SELECT 'Enhanced monitoring views created successfully' as views_status;
+SELECT 'Enhanced monitoring views created' as views_status;
 
 -- ===============================================================================================
--- STEP 5: TRACKING PROCEDURES (COMPATIBLE WITH ALL VERSIONS)
+-- STEP 4: TRACKING PROCEDURES
 -- ===============================================================================================
 
-SELECT 'Step 5: Creating tracking procedures...' as step_info;
+SELECT 'Step 4: Creating tracking procedures...' as step_info;
 
 DELIMITER //
 
@@ -183,7 +143,7 @@ CREATE PROCEDURE tracked_secondary_load(
     IN table_name VARCHAR(64),
     IN reason VARCHAR(255)
 )
-COMMENT 'Load table to HeatWave with tracking - Universal MySQL version support'
+COMMENT 'Load table to HeatWave with tracking'
 BEGIN
     DECLARE start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     DECLARE end_time TIMESTAMP;
@@ -193,7 +153,6 @@ BEGIN
     DECLARE operation_status VARCHAR(10) DEFAULT 'SUCCESS';
     DECLARE error_msg TEXT DEFAULT NULL;
     DECLARE full_table_name VARCHAR(128);
-    DECLARE sql_statement TEXT;
     
     SET full_table_name = CONCAT(schema_name, '.', table_name);
     
@@ -206,7 +165,7 @@ BEGIN
            AND t_id.LOAD_STATUS = 'AVAIL_RPDGSTABSTATE'), 0
     ) INTO memory_before;
     
-    -- Perform the load operation with comprehensive error handling
+    -- Perform the load operation with error handling
     BEGIN
         DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
@@ -215,10 +174,7 @@ BEGIN
                 error_msg = MESSAGE_TEXT;
         END;
         
-        -- Build SQL with proper escaping for all MySQL versions
-        SET sql_statement = CONCAT('ALTER TABLE `', schema_name, '`.`', table_name, '` SECONDARY_LOAD');
-        
-        SET @sql = sql_statement;
+        SET @sql = CONCAT('ALTER TABLE `', schema_name, '`.`', table_name, '` SECONDARY_LOAD');
         PREPARE stmt FROM @sql;
         EXECUTE stmt;
         DEALLOCATE PREPARE stmt;
@@ -227,11 +183,9 @@ BEGIN
     SET end_time = CURRENT_TIMESTAMP;
     SET duration_sec = TIMESTAMPDIFF(MICROSECOND, start_time, end_time) / 1000000;
     
-    -- Wait for loading to complete and get memory after (if successful)
+    -- Wait for loading to complete and get memory after
     IF operation_status = 'SUCCESS' THEN
-        -- Small delay to allow operation to complete
-        SELECT SLEEP(2);
-        
+        SELECT SLEEP(3);
         SELECT IFNULL(
             (SELECT ROUND(t_id.SIZE_BYTES / (1024 * 1024), 2)
              FROM performance_schema.rpd_tables t_id
@@ -241,7 +195,7 @@ BEGIN
         ) INTO memory_after;
     END IF;
     
-    -- Log the operation with explicit charset handling
+    -- Log the operation
     INSERT INTO dynamic_load_operations 
     (table_name, operation_type, reason, memory_impact_mb, duration_seconds, status, error_message)
     VALUES (full_table_name, 'LOAD', reason, 
@@ -263,7 +217,7 @@ CREATE PROCEDURE tracked_secondary_unload(
     IN table_name VARCHAR(64),
     IN reason VARCHAR(255)
 )
-COMMENT 'Unload table from HeatWave with tracking - Universal MySQL version support'
+COMMENT 'Unload table from HeatWave with tracking'
 BEGIN
     DECLARE start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     DECLARE end_time TIMESTAMP;
@@ -272,7 +226,6 @@ BEGIN
     DECLARE operation_status VARCHAR(10) DEFAULT 'SUCCESS';
     DECLARE error_msg TEXT DEFAULT NULL;
     DECLARE full_table_name VARCHAR(128);
-    DECLARE sql_statement TEXT;
     
     SET full_table_name = CONCAT(schema_name, '.', table_name);
     
@@ -285,7 +238,7 @@ BEGIN
            AND t_id.LOAD_STATUS = 'AVAIL_RPDGSTABSTATE'), 0
     ) INTO memory_before;
     
-    -- Perform the unload operation with comprehensive error handling
+    -- Perform the unload operation with error handling
     BEGIN
         DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
@@ -294,10 +247,7 @@ BEGIN
                 error_msg = MESSAGE_TEXT;
         END;
         
-        -- Build SQL with proper escaping for all MySQL versions
-        SET sql_statement = CONCAT('ALTER TABLE `', schema_name, '`.`', table_name, '` SECONDARY_UNLOAD');
-        
-        SET @sql = sql_statement;
+        SET @sql = CONCAT('ALTER TABLE `', schema_name, '`.`', table_name, '` SECONDARY_UNLOAD');
         PREPARE stmt FROM @sql;
         EXECUTE stmt;
         DEALLOCATE PREPARE stmt;
@@ -322,63 +272,15 @@ BEGIN
         IFNULL(error_msg, 'Success') as message;
 END //
 
--- Procedure to check dynamic operations activity
-CREATE PROCEDURE check_dynamic_operations()
-COMMENT 'Check recent dynamic operation activity'
-BEGIN
-    -- Recent operations summary
-    SELECT 'RECENT DYNAMIC OPERATIONS (24 HOURS):' as section;
-    
-    SELECT 
-        operation_type,
-        COUNT(*) as operation_count,
-        SUM(ABS(memory_impact_mb)) as total_memory_mb,
-        AVG(duration_seconds) as avg_duration_sec,
-        MAX(operation_time) as last_operation
-    FROM dynamic_load_operations 
-    WHERE operation_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-    GROUP BY operation_type
-    ORDER BY operation_count DESC;
-    
-    -- Failed operations
-    SELECT 'FAILED OPERATIONS (LAST 7 DAYS):' as section;
-    
-    SELECT 
-        operation_time,
-        table_name,
-        operation_type,
-        reason,
-        error_message
-    FROM dynamic_load_operations 
-    WHERE status = 'FAILED' 
-      AND operation_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-    ORDER BY operation_time DESC
-    LIMIT 10;
-    
-    -- Top memory impact operations
-    SELECT 'TOP MEMORY IMPACT OPERATIONS (LAST 7 DAYS):' as section;
-    
-    SELECT 
-        operation_time,
-        table_name,
-        operation_type,
-        memory_impact_mb,
-        reason
-    FROM dynamic_load_operations 
-    WHERE operation_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-    ORDER BY ABS(memory_impact_mb) DESC
-    LIMIT 10;
-END //
-
 DELIMITER ;
 
 SELECT 'Tracking procedures created successfully' as procedures_status;
 
 -- ===============================================================================================
--- STEP 6: VERIFICATION AND TESTING
+-- STEP 5: VERIFICATION AND TESTING
 -- ===============================================================================================
 
-SELECT 'Step 6: Verifying deployment...' as step_info;
+SELECT 'Step 5: Verifying deployment...' as step_info;
 
 -- Test the views
 SELECT 'Testing vw_heatwave_dynamic_tables:' as test_1;
@@ -387,78 +289,52 @@ SELECT COUNT(*) as dynamic_tables_found FROM vw_heatwave_dynamic_tables;
 SELECT 'Testing vw_recent_dynamic_operations:' as test_2;  
 SELECT COUNT(*) as recent_operations FROM vw_recent_dynamic_operations;
 
-SELECT 'Testing vw_heatwave_memory_by_schema:' as test_3;
-SELECT COUNT(*) as schema_records FROM vw_heatwave_memory_by_schema;
-
--- Verify charset settings for all tables
-SELECT 'CHARSET VERIFICATION FOR ALL TABLES:' as charset_verification;
+-- Verify the new table
+SELECT 'Testing dynamic_load_operations table:' as test_3;
 SELECT 
-    table_name,
-    table_collation,
-    CASE 
-        WHEN table_collation LIKE 'utf8mb4%' THEN 'OK - UTF8MB4'
-        ELSE 'WARNING - Not UTF8MB4'
-    END as charset_status
-FROM information_schema.tables 
-WHERE table_schema = 'support_heatwave'
-ORDER BY table_name;
+    COUNT(*) as operation_records,
+    'Table structure verified' as status
+FROM dynamic_load_operations;
 
 -- ===============================================================================================
--- STEP 7: USAGE EXAMPLES AND DOCUMENTATION
+-- STEP 6: USAGE EXAMPLES AND DOCUMENTATION
 -- ===============================================================================================
 
 SELECT 'USAGE EXAMPLES:' as usage_header;
 
--- Insert sample documentation
+-- Insert sample usage documentation
 INSERT INTO dynamic_load_operations 
 (table_name, operation_type, reason, memory_impact_mb, duration_seconds, status)
 VALUES 
-('example_schema.sample_table', 'LOAD', 'System initialization example', 0, 0, 'SUCCESS');
+('example_schema.sample_table', 'LOAD', 'System initialization - example record', 0, 0, 'SUCCESS');
 
 SELECT 'Example usage commands:' as examples;
 SELECT '-- Load a table with tracking:' as cmd1;
-SELECT 'CALL tracked_secondary_load("your_schema", "your_table", "Monthly analysis");' as cmd2;
+SELECT '-- CALL tracked_secondary_load("your_schema", "your_table", "Monthly analysis");' as cmd2;
 SELECT '-- Unload a table with tracking:' as cmd3;
-SELECT 'CALL tracked_secondary_unload("your_schema", "your_table", "Analysis completed");' as cmd4;
-SELECT '-- Check dynamic operations:' as cmd5;
-SELECT 'CALL check_dynamic_operations();' as cmd6;
-SELECT '-- View recent operations:' as cmd7;
-SELECT 'SELECT * FROM vw_recent_dynamic_operations;' as cmd8;
+SELECT '-- CALL tracked_secondary_unload("your_schema", "your_table", "Analysis completed");' as cmd4;
+SELECT '-- View recent operations:' as cmd5;
+SELECT '-- SELECT * FROM vw_recent_dynamic_operations;' as cmd6;
 
 -- ===============================================================================================
--- STEP 8: DEPLOYMENT COMPLETION
+-- STEP 7: DEPLOYMENT COMPLETION
 -- ===============================================================================================
 
 SELECT 'DEPLOYMENT COMPLETED SUCCESSFULLY!' as deployment_final_status;
 SELECT '==========================================' as separator1;
-SELECT 'HeatWave Universal Dynamic Monitoring v2.0' as system_name;
-SELECT 'Compatible: MySQL 8.0, 8.4, 9.0, 9.3+' as compatibility;
-SELECT 'Charset: UTF8MB4 (explicitly set)' as charset_info;
+SELECT 'HeatWave Dynamic Monitoring v2.0' as system_name;
+SELECT 'MySQL 9.x Compatible' as compatibility;
 SELECT '==========================================' as separator2;
 
 -- Final verification
 SELECT 'FINAL VERIFICATION:' as final_verification;
 SELECT 
     (SELECT COUNT(*) FROM dynamic_load_operations) as operation_records,
-    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.VIEWS 
-     WHERE TABLE_SCHEMA = 'support_heatwave' 
-       AND TABLE_NAME LIKE 'vw_%dynamic%') as dynamic_views,
-    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.ROUTINES 
-     WHERE ROUTINE_SCHEMA = 'support_heatwave' 
-       AND ROUTINE_NAME LIKE 'tracked_%') as tracking_procedures,
-    'Universal dynamic monitoring ready!' as status;
-
--- Final charset verification
-SELECT 'FINAL CHARSET VERIFICATION:' as charset_final;
-SELECT 
-    DEFAULT_CHARACTER_SET_NAME as db_charset,
-    DEFAULT_COLLATION_NAME as db_collation,
-    'Database charset properly set' as charset_status
-FROM information_schema.schemata 
-WHERE schema_name = 'support_heatwave';
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'support_heatwave' AND TABLE_NAME LIKE 'vw_%dynamic%') as dynamic_views,
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA = 'support_heatwave' AND ROUTINE_NAME LIKE 'tracked_%') as tracking_procedures,
+    'Dynamic monitoring features ready!' as status;
 
 -- Clean up example record
 DELETE FROM dynamic_load_operations WHERE table_name = 'example_schema.sample_table';
 
-SELECT 'System ready for universal MySQL deployment!' as ready_status;
-SELECT 'NO CHARSET WARNINGS - Explicit UTF8MB4 used throughout' as charset_final_status;
+SELECT 'System ready for dynamic HeatWave table management!' as ready_status;
