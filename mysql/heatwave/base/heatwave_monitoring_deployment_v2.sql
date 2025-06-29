@@ -1,10 +1,9 @@
 -- ===============================================================================================
--- MISSING VIEWS PATCH FOR HEATWAVE MONITORING SYSTEM
--- This patch adds views that were referenced but missing from the main deployment
---
---   SOURCE /mnt/fs-share-devqa/server-config/mysqlendb/mysql_heatwave/heatwave_monitoring_deployment_v2.sql;
--- ===============================================================================================
+-- HEATWAVE MONITORING SYSTEM - DYNAMIC OPERATIONS TRACKING (CLEAN VERSION)
+-- Version: 2.0 - UTF8 Compatible (No Emoji Icons)
 -- Integration with your existing monitoring system
+-- ===============================================================================================
+
 USE support_heatwave;
 
 -- Track dynamic loading operations
@@ -115,7 +114,7 @@ BEGIN
     VALUES (CONCAT(schema_name, '.', table_name), 'LOAD', reason, 
             memory_after - memory_before, duration_sec, operation_status);
     
-    -- Report results
+    -- Report results (NO EMOJIS)
     SELECT 
         CONCAT(schema_name, '.', table_name) as table_loaded,
         reason as operation_reason,
@@ -167,7 +166,7 @@ BEGIN
     VALUES (CONCAT(schema_name, '.', table_name), 'UNLOAD', reason, 
             -memory_before, duration_sec, operation_status);
     
-    -- Report results
+    -- Report results (NO EMOJIS)
     SELECT 
         CONCAT(schema_name, '.', table_name) as table_unloaded,
         reason as operation_reason,
@@ -182,7 +181,7 @@ DELIMITER ;
 -- CALL tracked_secondary_load('your_schema', 'p_trx_extended_24m', 'Monthly analysis request');
 -- CALL tracked_secondary_unload('your_schema', 'p_trx_extended_24m', 'Analysis completed');
 
--- View recent dynamic operations
+-- View recent dynamic operations (NO EMOJIS)
 CREATE OR REPLACE VIEW vw_recent_dynamic_operations AS
 SELECT 
     operation_time,
@@ -191,9 +190,9 @@ SELECT
     reason,
     CONCAT(ABS(memory_impact_mb), ' MB') as memory_change,
     CASE 
-        WHEN memory_impact_mb > 0 THEN '📈 Memory Added'
-        WHEN memory_impact_mb < 0 THEN '📉 Memory Freed'
-        ELSE '➡️ No Change'
+        WHEN memory_impact_mb > 0 THEN '[ADDED] Memory Added'
+        WHEN memory_impact_mb < 0 THEN '[FREED] Memory Freed'
+        ELSE '[NONE] No Change'
     END as impact_type,
     CONCAT(duration_seconds, 's') as duration,
     status
