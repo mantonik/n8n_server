@@ -3,26 +3,23 @@ drop database support_heatwave;
 
 -- Step 1: Core system with universal charset
 SOURCE heatwave_monitoring_patch_00.sql;
-show tables;
 
 -- Step 2: Add missing advanced views  
 SOURCE heatwave_monitoring_patch_01.sql;
-show tables;
 
 -- Step 3: Add original basic views (for compatibility)
 SOURCE heatwave_monitoring_patch_02.sql;
-show tables;
-
 
 -- Step 4: Add dynamic operations tracking (optional)
 SOURCE heatwave_monitoring_patch_03.sql;
-show tables;
 
+-- List all objects
+SHOW TABLES IN support_heatwave;
 
--- Step 5: Remove icons which caused problem with charse between different db versions
-SOURCE heatwave_monitoring_patch_04.sql;
-show tables;
+-- update to 16GB memory for FREE MySQL Heatwave
+update c_monitoring_options set option_value=16 where id =4 and option_name ='cluster_memory_gb';
+commit;
 
--- Step 6: fix views and tables
-SOURCE heatwave_monitoring_patch_05.sql;
-show tables;
+-- Should show your dashboard
+SELECT * FROM vw_monitoring_dashboard;
+
