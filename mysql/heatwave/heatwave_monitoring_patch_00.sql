@@ -11,7 +11,7 @@
 -- 
 -- 2. Or run from mysql command line:
 --    USE support_heatwave;
---    SOURCE /path/to/heatwave_monitoring_deployment.sql;
+--    SOURCE /mnt/fs-share-devqa/server-config/mysqlendb/mysql_heatwave/heatwave_monitoring_deployment.sql;
 --
 -- WHAT THIS SYSTEM MONITORS:
 -- ✅ Detects SECONDARY_ENGINE=RAPID changes across all schemas
@@ -39,8 +39,11 @@ SELECT CONCAT('Deployment Time: ', NOW()) as deployment_time;
 
 SELECT '📋 Step 1: Preparing environment...' as step_info;
 
--- Create schema
-CREATE SCHEMA IF NOT EXISTS support_heatwave;
+-- This works everywhere MySQL 8.0+
+CREATE DATABASE IF NOT EXISTS  support_heatwave 
+    CHARACTER SET utf8mb4 
+    COLLATE utf8mb4_unicode_ci;
+
 USE support_heatwave;
 
 -- Clean existing objects for fresh deployment

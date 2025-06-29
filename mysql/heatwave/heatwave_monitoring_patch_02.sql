@@ -2,8 +2,6 @@
 -- USE support_heatwave;
 -- SOURCE /mnt/fs-share-devqa/server-config/mysqlendb/mysql_heatwave/db_support_heatwave.sql
 --
--- Step 1: Create the monitoring database
-CREATE DATABASE IF NOT EXISTS support_heatwave;
 USE support_heatwave;
 
 -- Step 2: Create a version tracking table

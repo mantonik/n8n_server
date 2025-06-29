@@ -1,7 +1,12 @@
- SET NAMES utf8mb4;
-SOURCE /root/bin/n8n_server/mysql/heatwave/heatwave_monitoring_01.sql
-SOURCE /root/bin/n8n_server/mysql/heatwave/heatwave_monitoring_patch_01.sql
-SOURCE /root/bin/n8n_server/mysql/heatwave/heatwave_monitoring_patch_02.sql
-SOURCE /root/bin/n8n_server/mysql/heatwave/heatwave_monitoring_patch_03.sql
-SOURCE /root/bin/n8n_server/mysql/heatwave/heatwave_monitoring_patch_04.sql
+-- Step 1: Core system with universal charset
+SOURCE heatwave_monitoring_patch_00.sql;
+
+-- Step 2: Add missing advanced views  
+SOURCE heatwave_monitoring_patch_01.sql;
+
+-- Step 3: Add original basic views (for compatibility)
+SOURCE heatwave_monitoring_patch_02.sql;
+
+-- Step 4: Add dynamic operations tracking (optional)
+SOURCE heatwave_monitoring_patch_03.sql;
 
