@@ -1,3 +1,6 @@
+-- Drop db 
+drop database support_heatwave;
+
 -- Step 1: Core system with universal charset
 SOURCE heatwave_monitoring_patch_00.sql;
 
@@ -10,3 +13,5 @@ SOURCE heatwave_monitoring_patch_02.sql;
 -- Step 4: Add dynamic operations tracking (optional)
 SOURCE heatwave_monitoring_patch_03.sql;
 
+-- Step 5: Remove icons which caused problem with charse between different db versions
+SOURCE heatwave_monitoring_patch_04.sql;
