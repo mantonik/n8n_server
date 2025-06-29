@@ -1,17 +1,17 @@
 -- ===============================================================================================
 -- HEATWAVE CHANGE MONITORING SYSTEM - COMPLETE DEPLOYMENT PACKAGE
--- Version: 2.0 - Production Ready & Optimized
+-- Version: 2.0 - Production Ready & Optimized - FIXED VERSION
 -- MySQL Version: 8.4.4+ Compatible
 -- Environment: Universal (QA, Production, Development)
 -- ===============================================================================================
 --
 -- DEPLOYMENT INSTRUCTIONS:
 -- 1. Execute this entire script in MySQL:
---    mysql -u root -p < heatwave_monitoring_deployment.sql
+--    mysql -u root -p < heatwave_monitoring_patch_00_FIXED.sql
 -- 
 -- 2. Or run from mysql command line:
 --    USE support_heatwave;
---    SOURCE /mnt/fs-share-devqa/server-config/mysqlendb/mysql_heatwave/heatwave_monitoring_deployment.sql;
+--    SOURCE /mnt/fs-share-devqa/server-config/mysqlendb/mysql_heatwave/heatwave_monitoring_patch_00_FIXED.sql;
 --
 -- WHAT THIS SYSTEM MONITORS:
 -- ✅ Detects SECONDARY_ENGINE=RAPID changes across all schemas
@@ -28,8 +28,8 @@
 -- - SELECT * FROM vw_monitoring_dashboard;
 -- ===============================================================================================
 
--- Deployment Header
-SELECT '🚀 HeatWave Change Monitoring System v2.0 - Starting Deployment...' as deployment_status;
+-- Deployment Header (NO EMOJIS)
+SELECT 'HeatWave Change Monitoring System v2.0 - Starting Deployment...' as deployment_status;
 SELECT CONCAT('MySQL Version: ', VERSION()) as database_info;
 SELECT CONCAT('Deployment Time: ', NOW()) as deployment_time;
 
@@ -37,7 +37,7 @@ SELECT CONCAT('Deployment Time: ', NOW()) as deployment_time;
 -- STEP 1: ENVIRONMENT PREPARATION
 -- ===============================================================================================
 
-SELECT '📋 Step 1: Preparing environment...' as step_info;
+SELECT 'Step 1: Preparing environment...' as step_info;
 
 -- This works everywhere MySQL 8.0+
 CREATE DATABASE IF NOT EXISTS  support_heatwave 
@@ -69,13 +69,13 @@ DROP TABLE IF EXISTS rapid_changes_detailed;
 DROP TABLE IF EXISTS table_state_current;
 DROP TABLE IF EXISTS c_monitoring_options;
 
-SELECT '✅ Environment cleaned and ready' as cleanup_status;
+SELECT 'Environment cleaned and ready' as cleanup_status;
 
 -- ===============================================================================================
 -- STEP 2: CONFIGURATION SYSTEM
 -- ===============================================================================================
 
-SELECT '⚙️ Step 2: Creating configuration system...' as step_info;
+SELECT 'Step 2: Creating configuration system...' as step_info;
 
 -- Configuration table
 CREATE TABLE c_monitoring_options (
@@ -104,13 +104,13 @@ INSERT INTO c_monitoring_options (option_name, option_value, option_description)
 ('exclude_schemas', 'information_schema,performance_schema,sys,mysql,mysql_audit,support_heatwave', 'Excluded schemas'),
 ('monitor_all_schemas', 'TRUE', 'Monitor all user schemas automatically');
 
-SELECT '✅ Configuration system created' as config_status;
+SELECT 'Configuration system created' as config_status;
 
 -- ===============================================================================================
 -- STEP 3: DATA STORAGE TABLES
 -- ===============================================================================================
 
-SELECT '🗄️ Step 3: Creating data storage tables...' as step_info;
+SELECT 'Step 3: Creating data storage tables...' as step_info;
 
 -- Current state tracking table
 CREATE TABLE table_state_current (
@@ -166,13 +166,13 @@ CREATE TABLE monitoring_cleanup_log (
     INDEX idx_cleanup_status (cleanup_status)
 ) ENGINE=InnoDB COMMENT='Cleanup operation audit log';
 
-SELECT '✅ Data storage tables created' as storage_status;
+SELECT 'Data storage tables created' as storage_status;
 
 -- ===============================================================================================
 -- STEP 4: CONFIGURATION FUNCTIONS
 -- ===============================================================================================
 
-SELECT '🔧 Step 4: Creating configuration functions...' as step_info;
+SELECT 'Step 4: Creating configuration functions...' as step_info;
 
 DELIMITER //
 
@@ -219,17 +219,17 @@ END //
 
 DELIMITER ;
 
-SELECT '✅ Configuration functions created' as functions_status;
+SELECT 'Configuration functions created' as functions_status;
 
 -- ===============================================================================================
 -- STEP 5: CORE MONITORING PROCEDURES
 -- ===============================================================================================
 
-SELECT '🎯 Step 5: Creating core monitoring procedures...' as step_info;
+SELECT 'Step 5: Creating core monitoring procedures...' as step_info;
 
 DELIMITER //
 
--- Main monitoring procedure
+-- Main monitoring procedure (NO EMOJIS)
 CREATE PROCEDURE detect_all_rapid_changes()
 COMMENT 'Main procedure to detect RAPID engine changes across all schemas'
 BEGIN
@@ -311,16 +311,16 @@ BEGIN
     WHERE change_time < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 HOUR)
       AND processed = FALSE;
     
-    -- Report results
+    -- Report results (NO EMOJIS)
     SELECT 
         CURRENT_TIMESTAMP as check_time,
         baseline_count as new_tables_added,
         changes_detected as changes_logged,
         (SELECT COUNT(*) FROM table_state_current WHERE secondary_engine = 'RAPID') as total_rapid_tables,
         CASE 
-            WHEN baseline_count > 0 THEN CONCAT('📊 BASELINE: Added ', baseline_count, ' tables')
-            WHEN changes_detected > 0 THEN '🚨 CHANGES DETECTED!'
-            ELSE '✅ No changes detected'
+            WHEN baseline_count > 0 THEN CONCAT('[BASELINE] Added ', baseline_count, ' tables')
+            WHEN changes_detected > 0 THEN '[ALERT] CHANGES DETECTED!'
+            ELSE '[OK] No changes detected'
         END as status;
         
     -- Show recent changes if any
@@ -372,13 +372,13 @@ END //
 
 DELIMITER ;
 
-SELECT '✅ Core monitoring procedures created' as procedures_status;
+SELECT 'Core monitoring procedures created' as procedures_status;
 
 -- ===============================================================================================
 -- STEP 6: UTILITY PROCEDURES
 -- ===============================================================================================
 
-SELECT '🛠️ Step 6: Creating utility procedures...' as step_info;
+SELECT 'Step 6: Creating utility procedures...' as step_info;
 
 DELIMITER //
 
@@ -415,7 +415,7 @@ BEGIN
     SET config_updated = set_config_value(config_name, config_value);
     
     SELECT 
-        CONCAT('✅ Configuration updated: ', config_name, ' = ', config_value) as result,
+        CONCAT('[OK] Configuration updated: ', config_name, ' = ', config_value) as result,
         NOW() as updated_at;
 END //
 
@@ -426,7 +426,7 @@ BEGIN
     CALL update_monitoring_config('cluster_memory_gb', CAST(memory_gb AS CHAR));
     
     SELECT 
-        CONCAT('✅ Cluster memory updated to ', memory_gb, ' GB') as update_status,
+        CONCAT('[OK] Cluster memory updated to ', memory_gb, ' GB') as update_status,
         'Dashboard will now show accurate utilization percentages' as note;
 END //
 
@@ -440,10 +440,10 @@ BEGIN
         change_type,
         alert_level,
         CASE change_type
-            WHEN 'NEW_RAPID' THEN CONCAT('🚨 NEW: RAPID table (LOAD=', IFNULL(new_secondary_load, 'NULL'), ')')
-            WHEN 'LOAD_ENABLED' THEN CONCAT('⚡ CRITICAL: Auto-load ENABLED (', old_secondary_load, '→', new_secondary_load, ')')
-            WHEN 'LOAD_DISABLED' THEN CONCAT('⏸️ INFO: Auto-load disabled (', old_secondary_load, '→', new_secondary_load, ')')
-            ELSE 'ℹ️ Other change'
+            WHEN 'NEW_RAPID' THEN CONCAT('[NEW] RAPID table (LOAD=', IFNULL(new_secondary_load, 'NULL'), ')')
+            WHEN 'LOAD_ENABLED' THEN CONCAT('[CRITICAL] Auto-load ENABLED (', old_secondary_load, '->', new_secondary_load, ')')
+            WHEN 'LOAD_DISABLED' THEN CONCAT('[INFO] Auto-load disabled (', old_secondary_load, '->', new_secondary_load, ')')
+            ELSE '[INFO] Other change'
         END as alert_description,
         TIMESTAMPDIFF(MINUTE, change_time, NOW()) as minutes_ago,
         notes
@@ -554,15 +554,15 @@ END //
 
 DELIMITER ;
 
-SELECT '✅ Utility procedures created' as utilities_status;
+SELECT 'Utility procedures created' as utilities_status;
 
 -- ===============================================================================================
--- STEP 7: MONITORING VIEWS
+-- STEP 7: MONITORING VIEWS - INCLUDING MAIN DASHBOARD (FIXED!)
 -- ===============================================================================================
 
-SELECT '📊 Step 7: Creating monitoring views...' as step_info;
+SELECT 'Step 7: Creating monitoring views...' as step_info;
 
--- Main monitoring dashboard
+-- MAIN MONITORING DASHBOARD (THIS WAS MISSING!)
 CREATE VIEW vw_monitoring_dashboard AS
 SELECT 
     'System Info' as section,
@@ -664,7 +664,7 @@ FROM information_schema.tables
 WHERE CREATE_OPTIONS LIKE '%SECONDARY_LOAD=%'
 ORDER BY TABLE_SCHEMA, TABLE_NAME;
 
--- Memory analysis view
+-- Memory analysis view (ALSO WAS MISSING!)
 CREATE VIEW vw_heatwave_memory_analysis AS
 SELECT 
     tid.SCHEMA_NAME as table_schema,
@@ -675,9 +675,9 @@ SELECT
     t_id.LAST_QUERIED,
     IFNULL(tsc.secondary_load, 'Unknown') as secondary_load_setting,
     CASE 
-        WHEN tsc.secondary_load = 1 THEN '✅ Auto-load enabled'
-        WHEN tsc.secondary_load = 0 THEN '🤖 Autopilot/Manual'
-        ELSE '❓ Not monitored'
+        WHEN tsc.secondary_load = 1 THEN '[AUTO] Auto-load enabled'
+        WHEN tsc.secondary_load = 0 THEN '[MANUAL] Autopilot/Manual'
+        ELSE '[UNKNOWN] Not monitored'
     END as load_method
 FROM performance_schema.rpd_tables t_id
 JOIN performance_schema.rpd_table_id tid ON t_id.ID = tid.ID
@@ -685,19 +685,19 @@ LEFT JOIN table_state_current tsc ON tid.SCHEMA_NAME = tsc.table_schema AND tid.
 WHERE t_id.LOAD_STATUS = 'AVAIL_RPDGSTABSTATE'
 ORDER BY t_id.SIZE_BYTES DESC;
 
-SELECT '✅ Monitoring views created' as views_status;
+SELECT 'Monitoring views created - INCLUDING DASHBOARD!' as views_status;
 
 -- ===============================================================================================
 -- STEP 8: AUTOMATED EVENTS
 -- ===============================================================================================
 
-SELECT '⏰ Step 8: Setting up automated events...' as step_info;
+SELECT 'Step 8: Setting up automated events...' as step_info;
 
 -- Check event scheduler status
 SELECT 
     CASE 
-        WHEN @@global.event_scheduler = 'ON' THEN '✅ Event scheduler enabled'
-        ELSE '⚠️ WARNING: Event scheduler is OFF - enable with: SET GLOBAL event_scheduler = ON;'
+        WHEN @@global.event_scheduler = 'ON' THEN '[OK] Event scheduler enabled'
+        ELSE '[WARNING] Event scheduler is OFF - enable with: SET GLOBAL event_scheduler = ON;'
     END as event_scheduler_status;
 
 -- Automated monitoring event (every 5 minutes)
@@ -716,23 +716,23 @@ COMMENT 'Automated data cleanup'
 DO
   CALL support_heatwave.cleanup_monitoring_data();
 
-SELECT '✅ Automated events created' as events_status;
+SELECT 'Automated events created' as events_status;
 
 -- ===============================================================================================
 -- STEP 9: INITIAL BASELINE AND VERIFICATION
 -- ===============================================================================================
 
-SELECT '🔍 Step 9: Creating initial baseline...' as step_info;
+SELECT 'Step 9: Creating initial baseline...' as step_info;
 
 -- Create initial baseline
 CALL detect_all_rapid_changes();
 
-SELECT '📋 DEPLOYMENT VERIFICATION:' as verification_header;
+SELECT '[VERIFICATION] DEPLOYMENT COMPLETED!' as verification_header;
 
 -- Show configuration
 CALL show_monitoring_config();
 
--- Show dashboard
+-- Show dashboard (SHOULD WORK NOW!)
 SELECT * FROM vw_monitoring_dashboard ORDER BY 
     CASE section
         WHEN 'System Info' THEN 1
@@ -745,15 +745,15 @@ SELECT * FROM vw_monitoring_dashboard ORDER BY
     END, metric;
 
 -- Show current RAPID tables
-SELECT 'CURRENT RAPID TABLES:' as rapid_tables_header;
+SELECT '[INFO] CURRENT RAPID TABLES:' as rapid_tables_header;
 SELECT 
     table_schema,
     table_name,
     secondary_load,
     CASE 
-        WHEN secondary_load = 1 THEN '🚨 CONSUMING MEMORY'
-        WHEN secondary_load = 0 THEN '✅ NOT LOADED'
-        ELSE '❓ UNKNOWN STATE'
+        WHEN secondary_load = 1 THEN '[CRITICAL] CONSUMING MEMORY'
+        WHEN secondary_load = 0 THEN '[OK] NOT LOADED'
+        ELSE '[UNKNOWN] UNKNOWN STATE'
     END as memory_impact,
     first_detected,
     last_checked
@@ -762,7 +762,7 @@ WHERE secondary_engine = 'RAPID'
 ORDER BY table_schema, table_name;
 
 -- Show schemas being monitored
-SELECT 'SCHEMAS BEING MONITORED:' as schemas_header;
+SELECT '[INFO] SCHEMAS BEING MONITORED:' as schemas_header;
 SELECT 
     table_schema,
     COUNT(*) as total_tables,
@@ -777,7 +777,7 @@ ORDER BY rapid_tables DESC, table_schema;
 -- STEP 10: DEPLOYMENT COMPLETION
 -- ===============================================================================================
 
-SELECT '🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!' as deployment_final_status;
+SELECT '[SUCCESS] DEPLOYMENT COMPLETED SUCCESSFULLY!' as deployment_final_status;
 SELECT '===========================================' as separator1;
 SELECT 'HeatWave Change Monitoring System v2.0' as system_name;
 SELECT 'Production-Ready Universal Deployment' as deployment_type;
@@ -785,7 +785,7 @@ SELECT 'MySQL 8.4.4+ Compatible' as compatibility;
 SELECT '===========================================' as separator2;
 
 -- Post-deployment instructions
-SELECT '📚 POST-DEPLOYMENT QUICK START:' as instructions_header;
+SELECT '[INSTRUCTIONS] POST-DEPLOYMENT QUICK START:' as instructions_header;
 SELECT '1. Verify system status:' as step_1;
 SELECT '   SELECT * FROM vw_monitoring_dashboard;' as command_1;
 SELECT '2. Check for any alerts:' as step_2;
@@ -796,53 +796,63 @@ SELECT '4. Update cluster memory size (if needed):' as step_4;
 SELECT '   CALL update_cluster_memory(64); -- for production' as command_4;
 
 -- Key features summary
-SELECT '🎯 KEY FEATURES ENABLED:' as features_header;
-SELECT '✅ Universal schema monitoring' as feature_1;
-SELECT '✅ Real-time SECONDARY_LOAD change detection' as feature_2;
-SELECT '✅ Actual memory usage tracking' as feature_3;
-SELECT '✅ Automated cleanup (90-day retention)' as feature_4;
-SELECT '✅ Critical alerts for memory consumption' as feature_5;
-SELECT '✅ Complete audit trail' as feature_6;
-SELECT '✅ Production-ready automated events' as feature_7;
+SELECT '[FEATURES] KEY FEATURES ENABLED:' as features_header;
+SELECT '[OK] Universal schema monitoring' as feature_1;
+SELECT '[OK] Real-time SECONDARY_LOAD change detection' as feature_2;
+SELECT '[OK] Actual memory usage tracking' as feature_3;
+SELECT '[OK] Automated cleanup (90-day retention)' as feature_4;
+SELECT '[OK] Critical alerts for memory consumption' as feature_5;
+SELECT '[OK] Complete audit trail' as feature_6;
+SELECT '[OK] Production-ready automated events' as feature_7;
+SELECT '[OK] Main dashboard view (vw_monitoring_dashboard)' as feature_8;
 
 -- Critical alerts information
-SELECT '🚨 CRITICAL ALERTS TO WATCH:' as alerts_header;
-SELECT 'LOAD_ENABLED: When SECONDARY_LOAD changes 0→1' as alert_1;
+SELECT '[ALERTS] CRITICAL ALERTS TO WATCH:' as alerts_header;
+SELECT 'LOAD_ENABLED: When SECONDARY_LOAD changes 0->1' as alert_1;
 SELECT 'Impact: Table will start consuming HeatWave memory' as impact_1;
 SELECT 'NEW_RAPID: When table gets SECONDARY_ENGINE=RAPID' as alert_2;
 SELECT 'Impact: Table becomes eligible for HeatWave loading' as impact_2;
 
 -- Maintenance information
-SELECT '🔧 MAINTENANCE COMMANDS:' as maintenance_header;
+SELECT '[MAINTENANCE] MAINTENANCE COMMANDS:' as maintenance_header;
 SELECT 'View configuration: CALL show_monitoring_config();' as maint_1;
 SELECT 'Update settings: CALL update_monitoring_config("option", "value");' as maint_2;
 SELECT 'Manual cleanup: CALL manual_cleanup(30); -- 30 days retention' as maint_3;
 SELECT 'Memory analysis: SELECT * FROM vw_heatwave_memory_analysis;' as maint_4;
 
 -- Performance optimization notes
-SELECT '⚡ PERFORMANCE NOTES:' as performance_header;
+SELECT '[PERFORMANCE] PERFORMANCE NOTES:' as performance_header;
 SELECT 'Monitoring runs every 5 minutes automatically' as perf_1;
 SELECT 'Cleanup runs daily at 2 AM automatically' as perf_2;
 SELECT 'All indexes optimized for performance' as perf_3;
 SELECT 'Uses atomic INSERT...ON DUPLICATE KEY UPDATE' as perf_4;
 
 -- Final deployment summary
-SELECT CONCAT('✅ Deployment completed at: ', CAST(NOW() AS CHAR)) as deployment_timestamp;
-SELECT CONCAT('🗄️ Database: ', CAST(DATABASE() AS CHAR)) as deployed_database;
-SELECT CONCAT('📊 MySQL Version: ', CAST(VERSION() AS CHAR)) as mysql_version;
-SELECT '🚀 Ready to monitor HeatWave changes!' as ready_status;
+SELECT CONCAT('[OK] Deployment completed at: ', CAST(NOW() AS CHAR)) as deployment_timestamp;
+SELECT CONCAT('[OK] Database: ', CAST(DATABASE() AS CHAR)) as deployed_database;
+SELECT CONCAT('[OK] MySQL Version: ', CAST(VERSION() AS CHAR)) as mysql_version;
+SELECT '[SUCCESS] Ready to monitor HeatWave changes!' as ready_status;
 
 -- Final verification query
-SELECT 'FINAL VERIFICATION RESULTS:' as final_verification;
+SELECT '[VERIFICATION] FINAL VERIFICATION RESULTS:' as final_verification;
 SELECT 
     (SELECT COUNT(*) FROM c_monitoring_options) as config_options_loaded,
     (SELECT COUNT(*) FROM table_state_current) as tables_being_monitored,
     (SELECT COUNT(*) FROM table_state_current WHERE secondary_engine = 'RAPID') as rapid_tables_found,
     CASE 
-        WHEN (SELECT COUNT(*) FROM table_state_current) > 0 THEN '🎉 SUCCESS: System is monitoring tables'
-        ELSE '⚠️ No tables found - this is normal for fresh environments'
+        WHEN (SELECT COUNT(*) FROM table_state_current) > 0 THEN '[SUCCESS] System is monitoring tables'
+        ELSE '[INFO] No tables found - this is normal for fresh environments'
     END as monitoring_status;
 
+-- Test that dashboard view exists
+SELECT '[TEST] Testing dashboard view availability...' as dashboard_test;
+SELECT 
+    CASE 
+        WHEN (SELECT COUNT(*) FROM information_schema.views WHERE table_schema = 'support_heatwave' AND table_name = 'vw_monitoring_dashboard') > 0 
+        THEN '[SUCCESS] vw_monitoring_dashboard view created successfully'
+        ELSE '[ERROR] vw_monitoring_dashboard view NOT created'
+    END as dashboard_status;
+
 -- ===============================================================================================
--- END OF DEPLOYMENT SCRIPT
+-- END OF DEPLOYMENT SCRIPT - PATCH 00 FIXED
 -- ===============================================================================================
