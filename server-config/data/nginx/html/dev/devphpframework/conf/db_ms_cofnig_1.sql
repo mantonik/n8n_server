@@ -18,8 +18,9 @@ create user devusrphpfrm@'%' identified by  'Edcvfr1928345!';
 grant all privileges on dev_phpframework.* to devusrphpfrm@'%';
 
 cd /data/nginx/html/dev/devphpframework/conf
+mdl
 
-USE dev_phpframework;
+drop database dev_phpframework;
 
 source db_ms_cofnig_1.sql
 */
@@ -266,3 +267,6 @@ CREATE INDEX idx_g_users_active ON g_users(is_active);
 CREATE INDEX idx_c_site_settings_key ON c_site_settings(setting_key);
 CREATE INDEX idx_c_templates_active ON c_templates(is_active);
 CREATE INDEX idx_p_page_content_path_status ON p_page_content(page_path, status);
+
+-- final parent_comment_id
+commit;
