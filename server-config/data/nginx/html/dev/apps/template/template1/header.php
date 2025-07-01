@@ -1,1 +1,0 @@
-<!DOCTYPE html><html><head><title>PHP Framework</title><link rel="stylesheet" href="/template/template1/style.css"></head><body><header><h1>My Site</h1><nav><a href="/?page=home">Home</a> <?php if (is_logged_in()): ?><a href="/?page=logout">Logout</a><?php else: ?><a href="/?page=login">Login</a><?php endif; ?></nav></header><main>

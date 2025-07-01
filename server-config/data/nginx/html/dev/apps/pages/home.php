@@ -1,1 +1,0 @@
-<h1>Welcome to the PHP Framework</h1><p>This is a secure internal page.</p>
