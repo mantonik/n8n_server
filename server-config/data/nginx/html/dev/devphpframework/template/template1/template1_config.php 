@@ -1,0 +1,27 @@
+// ========================================
+// template1_config.php - Template1 Configuration File
+// Version: 1.0.0
+// Created: 2025-07-01
+// Framework: PHP Modular Development Framework
+// Purpose: Template1 metadata and configuration settings
+// ========================================
+
+return [
+    'name' => 'Default Theme',
+    'version' => '1.0.0',
+    'description' => 'Clean and responsive default template',
+    'author' => 'Framework Developer',
+    'colors' => [
+        'primary' => '#007cba',
+        'secondary' => '#6c757d',
+        'success' => '#28a745',
+        'danger' => '#dc3545',
+        'warning' => '#ffc107',
+        'info' => '#17a2b8'
+    ],
+    'features' => [
+        'responsive' => true,
+        'dark_mode' => false,
+        'custom_colors' => true
+    ]
+];
