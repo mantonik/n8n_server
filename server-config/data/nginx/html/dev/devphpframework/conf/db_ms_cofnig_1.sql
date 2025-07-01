@@ -1,37 +1,31 @@
-/ ========================================
-// conf/db_ms_config_1.sql - Database Config 1
-// ========================================
-
+-- ========================================
+-- db_ms_config_1.sql - Database Configuration File 1
+-- Version: 1.0.0
+-- Created: 2025-07-01
+-- Framework: PHP Modular Development Framework
+-- Purpose: Primary database configuration with table structure
+-- Table Prefixes: c_ (configuration), g_ (global), p_ (produced)
+-- ========================================
 
 -- HOST: localhost
--- DATABASE: framework_db1
+-- DATABASE: dev_phpframework
 -- USERNAME: db_user1
 -- PASSWORD: secure_password1
+
 /*
 create database dev_phpframework
 create user devusrphpfrm@'%' identified by  'Edcvfr1928345!';
 grant all privileges on dev_phpframework.* to devusrphpfrm@'%';
 
+cd /data/nginx/html/dev/devphpframework/conf
+
+USE dev_phpframework;
+
+source db_ms_cofnig_1.sql
 */
 
 CREATE DATABASE IF NOT EXISTS dev_phpframework;
 USE dev_phpframework;
-
-
--- ========================================
--- db_ms_config_1_prefixed.sql - Database Configuration File 1 with Table Prefixes
--- Version: 1.0.0
--- Created: 2025-07-01
--- Framework: PHP Modular Development Framework
--- Purpose: Primary database configuration with prefixed table structure
--- Table Prefixes: c_ (configuration), g_ (global), p_ (produced)
--- ========================================
-
--- HOST: localhost
--- DATABASE: framework_db1
--- USERNAME: db_user1
--- PASSWORD: secure_password1
-
 
 -- ========================================
 -- CONFIGURATION TABLES (c_ prefix)
