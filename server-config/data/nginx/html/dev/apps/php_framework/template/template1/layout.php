@@ -1,0 +1,1 @@
+<?php include __DIR__.'/header.php'; include $pagePath; include __DIR__.'/footer.php'; ?>
