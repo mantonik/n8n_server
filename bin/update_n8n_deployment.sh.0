@@ -31,6 +31,11 @@ echo "-------------"
 echo " Nginx version file:"
 find /etc/nginx -name "*.conf" -exec sh -c 'echo "=== $1 ==="; grep "# Version: \|# ver: " "$1" 2>/dev/null || echo "No version found"' _ {} \;
 echo "-------------"
+echo "update folder permission to allow nginx server write to file system"
+echo "this need to be adjusted per deployment"
+chown -R nginx:nginx /data/nginx/html/dev/devphpframework/log
+chmod 755 /data/nginx/html/dev/devphpframework/log
+
 echo "Restart nginx"
 /bin/systemctl stop nginx.service
 /bin/systemctl start nginx.service

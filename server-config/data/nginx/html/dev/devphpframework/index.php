@@ -1,32 +1,83 @@
 <?php
 // ========================================
-// index.php - Main Entry Point with Database Support
-// Version: 1.0.0
+// index.php - Main Entry Point (Fixed Version)
+// Version: 1.0.1
 // Created: 2025-07-01
 // Framework: PHP Modular Development Framework
-// Purpose: Main router for database-driven operations
+// Purpose: Main router with error handling and debugging
 // Database: dev_phpframework
 // ========================================
 
-session_start();
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
 
-// Set error reporting based on debug mode
-$debugMode = true; // Will be loaded from database
-if ($debugMode) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-} else {
-    error_reporting(0);
-    ini_set('display_errors', 0);
+try {
+    // Start session
+    session_start();
+    
+    // Include core files with error checking
+    $includesPath = __DIR__ . '/includes/functions.php';
+    if (!file_exists($includesPath)) {
+        throw new Exception("Required file not found: includes/functions.php");
+    }
+    require_once $includesPath;
+    
+    // Initialize framework
+    $framework = new ModularFramework();
+    $framework->handleRequest();
+    
+} catch (Exception $e) {
+    // Handle errors gracefully
+    http_response_code(500);
+    
+    echo "<!DOCTYPE html>
+    <html lang='en'>
+    <head>
+        <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Framework Error</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+            .error-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .error-header { color: #dc3545; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; }
+            .error-details { margin: 20px 0; }
+            .stack-trace { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; }
+            .debug-info { margin-top: 20px; font-size: 12px; color: #6c757d; }
+        </style>
+    </head>
+    <body>
+        <div class='error-container'>
+            <h1 class='error-header'>Framework Initialization Error</h1>
+            <div class='error-details'>
+                <p><strong>Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>
+                <p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . "</p>
+                <p><strong>Line:</strong> " . $e->getLine() . "</p>
+            </div>
+            
+            <details>
+                <summary>Stack Trace</summary>
+                <pre class='stack-trace'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>
+            </details>
+            
+            <div class='debug-info'>
+                <p><strong>Current Directory:</strong> " . htmlspecialchars(getcwd()) . "</p>
+                <p><strong>Script Path:</strong> " . htmlspecialchars($_SERVER['SCRIPT_FILENAME'] ?? 'Unknown') . "</p>
+                <p><strong>Request URI:</strong> " . htmlspecialchars($_SERVER['REQUEST_URI'] ?? 'Unknown') . "</p>
+                <p><strong>Timestamp:</strong> " . date('Y-m-d H:i:s') . "</p>
+            </div>
+            
+            <p><a href='/debug_php_framework.php'>→ Run Full Debug Script</a></p>
+        </div>
+    </body>
+    </html>";
+    
+    // Log the error
+    error_log("Framework Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
 }
 
-// Include core files
-require_once 'includes/functions.php';
-
-// Initialize framework
-$framework = new ModularFramework();
-$framework->handleRequest();
-
+// Framework class definition
 class ModularFramework {
     private $config;
     private $db;
@@ -50,12 +101,14 @@ class ModularFramework {
             // Initialize template system
             $this->initializeTemplate($this->metadata);
             
-            // Log page access
-            Logger::info("Page accessed: {$this->currentPage}", [
-                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
-                'user_id' => AuthManager::getCurrentUser()['id'] ?? null
-            ]);
+            // Log page access (only if logger is available)
+            if (class_exists('Logger')) {
+                Logger::info("Page accessed: {$this->currentPage}", [
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+                    'user_id' => class_exists('AuthManager') ? (AuthManager::getCurrentUser()['id'] ?? null) : null
+                ]);
+            }
             
             // Render the page
             $this->renderPage();
@@ -67,21 +120,24 @@ class ModularFramework {
     
     private function loadConfiguration() {
         try {
-            // Load basic configuration from database
-            $this->config = [
-                'debug' => ConfigManager::getSetting('debug_mode', true),
-                'default_template' => ConfigManager::getSetting('default_template', 'template1'),
-                'site_name' => ConfigManager::getSetting('site_name', 'My Modular Site'),
-                'timezone' => ConfigManager::getSetting('timezone', 'America/New_York'),
-                'admin_email' => ConfigManager::getSetting('admin_email', 'admin@example.com')
-            ];
+            // Try to load from database first
+            if (class_exists('ConfigManager')) {
+                $this->config = [
+                    'debug' => ConfigManager::getSetting('debug_mode', true),
+                    'default_template' => ConfigManager::getSetting('default_template', 'template1'),
+                    'site_name' => ConfigManager::getSetting('site_name', 'My Modular Site'),
+                    'timezone' => ConfigManager::getSetting('timezone', 'America/New_York'),
+                    'admin_email' => ConfigManager::getSetting('admin_email', 'admin@example.com')
+                ];
+            } else {
+                throw new Exception("ConfigManager not available");
+            }
             
             // Set timezone
             date_default_timezone_set($this->config['timezone']);
             
         } catch (Exception $e) {
             // Fallback configuration if database is not available
-            Logger::error("Failed to load configuration from database", ['error' => $e->getMessage()]);
             $this->config = [
                 'debug' => true,
                 'default_template' => 'template1',
@@ -89,6 +145,15 @@ class ModularFramework {
                 'timezone' => 'America/New_York',
                 'admin_email' => 'admin@example.com'
             ];
+            
+            // Try to include traditional config.php as fallback
+            $configPath = __DIR__ . '/conf/config.php';
+            if (file_exists($configPath)) {
+                include $configPath;
+                if (isset($config) && is_array($config)) {
+                    $this->config = array_merge($this->config, $config);
+                }
+            }
         }
     }
     
@@ -98,10 +163,6 @@ class ModularFramework {
         
         // Check if page file exists
         if (!$this->pageExists($page)) {
-            Logger::warning("Page not found: $page", [
-                'requested_url' => $_SERVER['REQUEST_URI'] ?? '',
-                'referer' => $_SERVER['HTTP_REFERER'] ?? ''
-            ]);
             throw new Exception("Page not found: $page", 404);
         }
         
@@ -116,25 +177,17 @@ class ModularFramework {
     }
     
     private function pageExists($page) {
-        $pagePath = "pages/$page.php";
+        $pagePath = __DIR__ . "/pages/$page.php";
         if (file_exists($pagePath)) {
             return true;
         }
         
         // Check for index file in directory
-        $dirPath = "pages/$page/index.php";
+        $dirPath = __DIR__ . "/pages/$page/index.php";
         return file_exists($dirPath);
     }
     
     private function loadPageMetadata($page) {
-        // First try to load from database (c_page_meta table)
-        $dbMeta = PageMetaManager::getPageMeta($page);
-        
-        if ($dbMeta) {
-            return $dbMeta;
-        }
-        
-        // Fallback to file-based metadata
         $metadata = [
             'title' => 'Default Title',
             'description' => 'Default description',
@@ -142,9 +195,21 @@ class ModularFramework {
             'template' => $this->config['default_template']
         ];
         
-        // Try to load meta.php from page directory
+        // Try database first (if available)
+        if (class_exists('PageMetaManager')) {
+            try {
+                $dbMeta = PageMetaManager::getPageMeta($page);
+                if ($dbMeta) {
+                    return $dbMeta;
+                }
+            } catch (Exception $e) {
+                // Database not available, continue with file-based metadata
+            }
+        }
+        
+        // Fallback to file-based metadata
         $parts = explode('/', $page);
-        $metaPath = 'pages/' . $parts[0] . '/meta.php';
+        $metaPath = __DIR__ . '/pages/' . $parts[0] . '/meta.php';
         
         if (file_exists($metaPath)) {
             $pageMeta = include $metaPath;
@@ -159,16 +224,20 @@ class ModularFramework {
     private function initializeTemplate($metadata) {
         $templateName = $metadata['template'];
         
-        // Get template info from database
-        $templateInfo = TemplateManager::getTemplate($templateName);
-        
-        if (!$templateInfo) {
-            Logger::warning("Template not found in database: $templateName, using default");
-            $templateInfo = TemplateManager::getDefaultTemplate();
-            $templateName = $templateInfo['template_name'];
+        // Try database template info (if available)
+        if (class_exists('TemplateManager')) {
+            try {
+                $templateInfo = TemplateManager::getTemplate($templateName);
+                if (!$templateInfo) {
+                    $templateInfo = TemplateManager::getDefaultTemplate();
+                    $templateName = $templateInfo['template_name'] ?? $templateName;
+                }
+            } catch (Exception $e) {
+                // Database not available, continue with file-based templates
+            }
         }
         
-        $templatePath = "template/$templateName";
+        $templatePath = __DIR__ . "/template/$templateName";
         
         if (!is_dir($templatePath)) {
             throw new Exception("Template directory not found: $templatePath");
@@ -177,8 +246,6 @@ class ModularFramework {
         $this->template = [
             'name' => $templateName,
             'path' => $templatePath,
-            'info' => $templateInfo,
-            'config' => TemplateManager::getTemplateConfig($templateName),
             'metadata' => $metadata
         ];
     }
@@ -200,16 +267,18 @@ class ModularFramework {
             throw new Exception("Template layout not found: $layoutPath");
         }
         
+        // Make framework available to template
+        $framework = $this;
         include $layoutPath;
     }
     
     private function getPagePath($page) {
-        $pagePath = "pages/$page.php";
+        $pagePath = __DIR__ . "/pages/$page.php";
         if (file_exists($pagePath)) {
             return $pagePath;
         }
         
-        $dirPath = "pages/$page/index.php";
+        $dirPath = __DIR__ . "/pages/$page/index.php";
         if (file_exists($dirPath)) {
             return $dirPath;
         }
@@ -220,36 +289,43 @@ class ModularFramework {
     private function initializeLogging() {
         if ($this->config['debug'] ?? true) {
             ini_set('log_errors', 1);
-            ini_set('error_log', 'log/error.log');
+            ini_set('error_log', __DIR__ . '/log/error.log');
+            
+            // Create log directory if it doesn't exist
+            $logDir = __DIR__ . '/log';
+            if (!is_dir($logDir)) {
+                mkdir($logDir, 0755, true);
+            }
         }
     }
     
     private function handleError($e) {
         $errorId = uniqid('err_');
         
-        // Log detailed error
-        Logger::error("Framework Error [$errorId]: " . $e->getMessage(), [
-            'error_id' => $errorId,
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-            'url' => $_SERVER['REQUEST_URI'] ?? '',
-            'method' => $_SERVER['REQUEST_METHOD'] ?? '',
-            'user_id' => AuthManager::getCurrentUser()['id'] ?? null
-        ]);
-        
         // Set appropriate HTTP status code
         $statusCode = $e->getCode() ?: 500;
         http_response_code($statusCode);
         
+        // Log the error
+        error_log("Framework Error [$errorId]: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+        
         if ($this->config['debug'] ?? true) {
-            echo "<h1>Error {$statusCode}</h1>";
-            echo "<p><strong>Error ID:</strong> $errorId</p>";
-            echo "<p><strong>Message:</strong> {$e->getMessage()}</p>";
-            echo "<p><strong>File:</strong> {$e->getFile()}:{$e->getLine()}</p>";
-            echo "<pre><strong>Trace:</strong>\n{$e->getTraceAsString()}</pre>";
+            echo "<!DOCTYPE html>
+            <html>
+            <head><title>Error $statusCode</title></head>
+            <body style='font-family: Arial, sans-serif; margin: 40px;'>
+                <h1>Error $statusCode</h1>
+                <p><strong>Error ID:</strong> $errorId</p>
+                <p><strong>Message:</strong> " . htmlspecialchars($e->getMessage()) . "</p>
+                <p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . ":" . $e->getLine() . "</p>
+                <details>
+                    <summary>Stack Trace</summary>
+                    <pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>
+                </details>
+                <p><a href='/'>← Back to Home</a></p>
+            </body>
+            </html>";
         } else {
-            // Show user-friendly error page
             $this->showErrorPage($statusCode, $errorId);
         }
     }
@@ -269,20 +345,12 @@ class ModularFramework {
             <meta charset='UTF-8'>
             <meta name='viewport' content='width=device-width, initial-scale=1.0'>
             <title>$title - {$this->config['site_name']}</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
-                .error-container { max-width: 600px; margin: 0 auto; }
-                h1 { color: #dc3545; }
-                .error-id { font-size: 12px; color: #6c757d; margin-top: 20px; }
-            </style>
         </head>
-        <body>
-            <div class='error-container'>
-                <h1>$title</h1>
-                <p>We're sorry, but something went wrong.</p>
-                <p><a href='?'>Return to Home</a></p>
-                <div class='error-id'>Error ID: $errorId</div>
-            </div>
+        <body style='font-family: Arial, sans-serif; margin: 40px; text-align: center;'>
+            <h1>$title</h1>
+            <p>We're sorry, but something went wrong.</p>
+            <p><a href='/'>Return to Home</a></p>
+            <div style='font-size: 12px; color: #666; margin-top: 20px;'>Error ID: $errorId</div>
         </body>
         </html>";
     }
@@ -300,14 +368,7 @@ class ModularFramework {
     }
     
     public function getTemplateUrl() {
-        return $this->template['path'];
-    }
-    
-    public function getTemplateConfig($key = null) {
-        if ($key) {
-            return isset($this->template['config'][$key]) ? $this->template['config'][$key] : null;
-        }
-        return $this->template['config'];
+        return str_replace(__DIR__, '', $this->template['path']);
     }
     
     public function getConfig($key = null) {
