@@ -10,7 +10,7 @@
 ?>
 
 <div class="about-page">
-    <h1><?php echo $framework->getMetadata('title'); ?></h1>
+    <h1><?php echo isset($framework) ? $framework->getMetadata('title') : 'About Page'; ?></h1>
     
     <div class="content">
         <p>This is the about page demonstrating the PHP modular framework.</p>

@@ -80,6 +80,9 @@ class ModularFramework {
             throw new Exception("Page not found: $page", 404);
         }
         
+        // Make framework available to page files
+        $framework = $this;
+        
         // Get page content
         ob_start();
         include $pagePath;
@@ -89,8 +92,7 @@ class ModularFramework {
         $templatePath = __DIR__ . '/template/' . $metadata['template'] . '/layout.php';
         
         if (file_exists($templatePath)) {
-            // Make variables available to template
-            $framework = $this;
+            // Make variables available to template (framework already set above)
             include $templatePath;
         } else {
             // Simple fallback if no template

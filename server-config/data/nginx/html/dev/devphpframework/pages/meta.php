@@ -80,10 +80,15 @@ function getPageMetadata($pageName) {
 }
 
 // If this file is included directly, return metadata for the requested page
-if (isset($requestedPage)) {
+if (isset($requestedPage) && $requestedPage !== null) {
     return getPageMetadata($requestedPage);
 }
 
-// If no specific page requested, return all metadata
-return $pageMetadata;
+// If no specific page requested, return default metadata
+return $pageMetadata['default'] ?? [
+    'title' => 'Page - My Modular Site',
+    'description' => 'A page on our modular PHP framework website',
+    'keywords' => 'php, framework, modular',
+    'template' => 'template1'
+];
 ?>
