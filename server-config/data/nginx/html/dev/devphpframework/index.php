@@ -1,10 +1,10 @@
 <?php
 // ========================================
-// index.php - Simple Working Framework
-// Version: 1.0.3 - GUARANTEED WORKING
+// index.php - Framework with Centralized Metadata
+// Version: 1.0.4
 // Created: 2025-07-02
 // Framework: PHP Modular Development Framework
-// Purpose: No-nonsense working framework
+// Purpose: Updated framework with centralized metadata system
 // ========================================
 
 error_reporting(E_ALL);
@@ -14,7 +14,7 @@ session_start();
 // Include functions
 require_once 'includes/functions.php';
 
-// Define the framework class RIGHT HERE
+// Define the framework class
 class ModularFramework {
     private $config = [
         'debug' => true,
@@ -22,17 +22,19 @@ class ModularFramework {
         'site_name' => 'My Modular Site'
     ];
     
+    private $metadata = [];
+    
     public function handleRequest() {
         try {
             // Get requested page
             $page = isset($_GET['page']) ? $_GET['page'] : 'home';
             $page = $this->sanitizePage($page);
             
-            // Load page metadata
-            $metadata = $this->loadPageMetadata($page);
+            // Load page metadata from centralized file
+            $this->metadata = $this->loadPageMetadata($page);
             
             // Render the page
-            $this->renderPage($page, $metadata);
+            $this->renderPage($page, $this->metadata);
             
         } catch (Exception $e) {
             $this->showError($e);
@@ -48,20 +50,22 @@ class ModularFramework {
     private function loadPageMetadata($page) {
         // Default metadata
         $metadata = [
-            'title' => 'Page Title',
-            'description' => 'Page description',
-            'keywords' => 'keywords',
-            'template' => 'template1'
+            'title' => ucfirst($page) . ' - ' . $this->config['site_name'],
+            'description' => 'A page on our modular PHP framework website',
+            'keywords' => 'php, framework, modular',
+            'template' => $this->config['default_template']
         ];
         
-        // Try to load from meta.php file
-        $parts = explode('/', $page);
-        $metaPath = __DIR__ . '/pages/' . $parts[0] . '/meta.php';
+        // Try to load from centralized meta.php file
+        $metaPath = __DIR__ . '/pages/meta.php';
         
         if (file_exists($metaPath)) {
-            $pageMeta = include $metaPath;
-            if (is_array($pageMeta)) {
-                $metadata = array_merge($metadata, $pageMeta);
+            // Set the requested page for the meta file
+            $requestedPage = $page;
+            $loadedMeta = include $metaPath;
+            
+            if (is_array($loadedMeta)) {
+                $metadata = array_merge($metadata, $loadedMeta);
             }
         }
         
@@ -144,7 +148,7 @@ class ModularFramework {
         if ($key && isset($this->metadata[$key])) {
             return $this->metadata[$key];
         }
-        return $this->metadata ?? [];
+        return $this->metadata;
     }
     
     public function getTemplatePath() {
@@ -160,11 +164,6 @@ class ModularFramework {
             return $this->config[$key] ?? null;
         }
         return $this->config;
-    }
-    
-    // Set metadata for templates
-    public function setMetadata($metadata) {
-        $this->metadata = $metadata;
     }
 }
 
