@@ -1,16 +1,14 @@
 <?php
 // ========================================
-// meta.php - Central Metadata Configuration
-// Version: 1.0.0
+// meta.php - Central Metadata Configuration (Fixed)
+// Version: 1.0.1
 // Created: 2025-07-02
 // Framework: PHP Modular Development Framework
-// Purpose: Central metadata for all pages
+// Purpose: Central metadata for all pages with proper null handling
 // Location: pages/meta.php
 // ========================================
 
 // Central metadata configuration for all pages
-// Usage: Each page's metadata is defined by its filename (without .php)
-
 $pageMetadata = [
     // Home page metadata
     'home' => [
@@ -65,6 +63,11 @@ $pageMetadata = [
 function getPageMetadata($pageName) {
     global $pageMetadata;
     
+    // Handle null or empty page name
+    if (empty($pageName) || $pageName === null) {
+        return $pageMetadata['default'];
+    }
+    
     // Remove any path separators and get just the page name
     $pageName = basename($pageName);
     
@@ -79,16 +82,12 @@ function getPageMetadata($pageName) {
     }
 }
 
-// If this file is included directly, return metadata for the requested page
-if (isset($requestedPage) && $requestedPage !== null) {
+// Check if this file is being included with a specific page request
+if (isset($requestedPage) && !empty($requestedPage)) {
+    // Return metadata for the specific requested page
     return getPageMetadata($requestedPage);
+} else {
+    // Return default metadata if no page specified or page is null/empty
+    return $pageMetadata['default'];
 }
-
-// If no specific page requested, return default metadata
-return $pageMetadata['default'] ?? [
-    'title' => 'Page - My Modular Site',
-    'description' => 'A page on our modular PHP framework website',
-    'keywords' => 'php, framework, modular',
-    'template' => 'template1'
-];
 ?>
