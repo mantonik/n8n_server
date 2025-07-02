@@ -1,10 +1,10 @@
 <?php
 // ========================================
-// index.php - Framework with Centralized Metadata
-// Version: 1.0.4
+// index.php - Framework with Fixed Metadata Loading
+// Version: 1.0.5
 // Created: 2025-07-02
 // Framework: PHP Modular Development Framework
-// Purpose: Updated framework with centralized metadata system
+// Purpose: Framework with bulletproof metadata loading
 // ========================================
 
 error_reporting(E_ALL);
@@ -48,6 +48,11 @@ class ModularFramework {
     }
     
     private function loadPageMetadata($page) {
+        // Ensure page is a valid string
+        if (empty($page) || !is_string($page)) {
+            $page = 'home';
+        }
+        
         // Default metadata
         $metadata = [
             'title' => ucfirst($page) . ' - ' . $this->config['site_name'],
@@ -60,12 +65,20 @@ class ModularFramework {
         $metaPath = __DIR__ . '/pages/meta.php';
         
         if (file_exists($metaPath)) {
-            // Set the requested page for the meta file
-            $requestedPage = $page;
-            $loadedMeta = include $metaPath;
-            
-            if (is_array($loadedMeta)) {
-                $metadata = array_merge($metadata, $loadedMeta);
+            try {
+                // Explicitly set the requested page variable for the meta file
+                $requestedPage = $page;
+                
+                // Include the meta file and get the returned metadata
+                $loadedMeta = include $metaPath;
+                
+                // If we got valid metadata, use it
+                if (is_array($loadedMeta) && !empty($loadedMeta)) {
+                    $metadata = $loadedMeta;
+                }
+            } catch (Exception $e) {
+                // If there's an error loading metadata, just use defaults
+                error_log("Error loading metadata for page '$page': " . $e->getMessage());
             }
         }
         
