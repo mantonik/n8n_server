@@ -1,10 +1,10 @@
 <?php
 // ========================================
-// index.php - Main Entry Point (Class Order Fixed)
-// Version: 1.0.2
+// index.php - Main Entry Point (Fixed Version)
+// Version: 1.0.1
 // Created: 2025-07-01
 // Framework: PHP Modular Development Framework
-// Purpose: Fixed class loading order
+// Purpose: Main router with error handling and debugging
 // Database: dev_phpframework
 // ========================================
 
@@ -13,14 +13,71 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('log_errors', 1);
 
-// Include core files FIRST
-$includesPath = __DIR__ . '/includes/functions.php';
-if (!file_exists($includesPath)) {
-    die("Required file not found: includes/functions.php");
+try {
+    // Start session
+    session_start();
+    
+    // Include core files with error checking
+    $includesPath = __DIR__ . '/includes/functions.php';
+    if (!file_exists($includesPath)) {
+        throw new Exception("Required file not found: includes/functions.php");
+    }
+    require_once $includesPath;
+    
+    // Initialize framework
+    $framework = new ModularFramework();
+    $framework->handleRequest();
+    
+} catch (Exception $e) {
+    // Handle errors gracefully
+    http_response_code(500);
+    
+    echo "<!DOCTYPE html>
+    <html lang='en'>
+    <head>
+        <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Framework Error</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+            .error-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .error-header { color: #dc3545; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; }
+            .error-details { margin: 20px 0; }
+            .stack-trace { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; }
+            .debug-info { margin-top: 20px; font-size: 12px; color: #6c757d; }
+        </style>
+    </head>
+    <body>
+        <div class='error-container'>
+            <h1 class='error-header'>Framework Initialization Error</h1>
+            <div class='error-details'>
+                <p><strong>Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>
+                <p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . "</p>
+                <p><strong>Line:</strong> " . $e->getLine() . "</p>
+            </div>
+            
+            <details>
+                <summary>Stack Trace</summary>
+                <pre class='stack-trace'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>
+            </details>
+            
+            <div class='debug-info'>
+                <p><strong>Current Directory:</strong> " . htmlspecialchars(getcwd()) . "</p>
+                <p><strong>Script Path:</strong> " . htmlspecialchars($_SERVER['SCRIPT_FILENAME'] ?? 'Unknown') . "</p>
+                <p><strong>Request URI:</strong> " . htmlspecialchars($_SERVER['REQUEST_URI'] ?? 'Unknown') . "</p>
+                <p><strong>Timestamp:</strong> " . date('Y-m-d H:i:s') . "</p>
+            </div>
+            
+            <p><a href='/debug_php_framework.php'>→ Run Full Debug Script</a></p>
+        </div>
+    </body>
+    </html>";
+    
+    // Log the error
+    error_log("Framework Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
 }
-require_once $includesPath;
 
-// DEFINE THE FRAMEWORK CLASS BEFORE USING IT
+// Framework class definition
 class ModularFramework {
     private $config;
     private $db;
@@ -230,7 +287,7 @@ class ModularFramework {
     }
     
     private function initializeLogging() {
-        if (($this->config['debug'] ?? true)) {
+        if ($this->config['debug'] ?? true) {
             ini_set('log_errors', 1);
             ini_set('error_log', __DIR__ . '/log/error.log');
             
@@ -252,7 +309,7 @@ class ModularFramework {
         // Log the error
         error_log("Framework Error [$errorId]: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
         
-        if (($this->config['debug'] ?? true)) {
+        if ($this->config['debug'] ?? true) {
             echo "<!DOCTYPE html>
             <html>
             <head><title>Error $statusCode</title></head>
@@ -303,80 +360,22 @@ class ModularFramework {
         if ($key) {
             return isset($this->metadata[$key]) ? $this->metadata[$key] : '';
         }
-        return $this->metadata ?? [];
+        return $this->metadata;
     }
     
     public function getTemplatePath() {
-        return $this->template['path'] ?? '';
+        return $this->template['path'];
     }
     
     public function getTemplateUrl() {
-        return str_replace(__DIR__, '', $this->template['path'] ?? '');
+        return str_replace(__DIR__, '', $this->template['path']);
     }
     
     public function getConfig($key = null) {
         if ($key) {
             return isset($this->config[$key]) ? $this->config[$key] : null;
         }
-        return $this->config ?? [];
+        return $this->config;
     }
-}
-
-// NOW START THE APPLICATION AFTER CLASS IS DEFINED
-try {
-    // Start session
-    session_start();
-    
-    // Initialize framework
-    $framework = new ModularFramework();
-    $framework->handleRequest();
-    
-} catch (Exception $e) {
-    // Handle errors gracefully
-    http_response_code(500);
-    
-    echo "<!DOCTYPE html>
-    <html lang='en'>
-    <head>
-        <meta charset='UTF-8'>
-        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-        <title>Framework Error</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-            .error-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .error-header { color: #dc3545; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; }
-            .error-details { margin: 20px 0; }
-            .stack-trace { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; }
-            .debug-info { margin-top: 20px; font-size: 12px; color: #6c757d; }
-        </style>
-    </head>
-    <body>
-        <div class='error-container'>
-            <h1 class='error-header'>Framework Initialization Error</h1>
-            <div class='error-details'>
-                <p><strong>Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>
-                <p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . "</p>
-                <p><strong>Line:</strong> " . $e->getLine() . "</p>
-            </div>
-            
-            <details>
-                <summary>Stack Trace</summary>
-                <pre class='stack-trace'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>
-            </details>
-            
-            <div class='debug-info'>
-                <p><strong>Current Directory:</strong> " . htmlspecialchars(getcwd()) . "</p>
-                <p><strong>Script Path:</strong> " . htmlspecialchars($_SERVER['SCRIPT_FILENAME'] ?? 'Unknown') . "</p>
-                <p><strong>Request URI:</strong> " . htmlspecialchars($_SERVER['REQUEST_URI'] ?? 'Unknown') . "</p>
-                <p><strong>Timestamp:</strong> " . date('Y-m-d H:i:s') . "</p>
-            </div>
-            
-            <p><a href='/test.php'>→ Run Simple Test Script</a></p>
-        </div>
-    </body>
-    </html>";
-    
-    // Log the error
-    error_log("Framework Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
 }
 ?>
