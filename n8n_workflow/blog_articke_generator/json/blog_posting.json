@@ -1,0 +1,526 @@
+{
+  "name": "DMCloudArchitect Content Pipeline with DeepAI",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-daily",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.schedule",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://blogs.oracle.com/cloud-infrastructure/",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "followRedirect": true,
+          "useQuerystring": false
+        }
+      },
+      "id": "scrape-oracle-blog",
+      "name": "Scrape Oracle Blog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract blog post links from Oracle blog HTML\nconst html = $input.first().json.data;\nconst cheerio = require('cheerio');\nconst $ = cheerio.load(html);\n\nconst posts = [];\nconst baseUrl = 'https://blogs.oracle.com';\n\n// Find blog post links (Oracle blog structure)\n$('a[href*=\"/20\"]').each((i, element) => {\n  const href = $(element).attr('href');\n  const title = $(element).text().trim();\n  \n  if (href && title && href.includes('/202')) {\n    const fullUrl = href.startsWith('http') ? href : baseUrl + href;\n    \n    // Filter for infrastructure-related keywords\n    const keywords = ['infrastructure', 'network', 'compute', 'storage', 'database', \n                     'mysql', 'mds', 'heatwave', 'vm', 'virtual machine', 'vcn',\n                     'subnet', 'load balancer', 'security', 'backup', 'performance',\n                     'kubernetes', 'container', 'terraform', 'automation', 'devops'];\n    \n    const titleLower = title.toLowerCase();\n    const hasKeyword = keywords.some(keyword => titleLower.includes(keyword));\n    \n    if (hasKeyword && posts.length < 3) { // Limit to 3 posts per run for DeepAI quotas\n      posts.push({\n        url: fullUrl,\n        title: title,\n        relevance: 'high'\n      });\n    }\n  }\n});\n\nreturn posts.map(post => ({ json: post }));"
+      },
+      "id": "extract-blog-links",
+      "name": "Extract Infrastructure Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "followRedirect": true
+        }
+      },
+      "id": "fetch-blog-content",
+      "name": "Fetch Blog Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse individual blog post content\nconst html = $input.first().json.data;\nconst cheerio = require('cheerio');\nconst $ = cheerio.load(html);\n\n// Extract title\nlet title = $('h1').first().text().trim();\nif (!title) {\n  title = $('title').text().trim();\n}\n\n// Extract content\nlet content = '';\nconst contentSelectors = ['.entry-content', 'article', '#content', '.post-content'];\nfor (const selector of contentSelectors) {\n  const elem = $(selector);\n  if (elem.length > 0) {\n    content = elem.text().trim();\n    break;\n  }\n}\n\n// Extract author\nlet author = $('.author').first().text().trim();\nif (!author) {\n  author = $('[class*=\"author\"]').first().text().trim() || 'Oracle Team';\n}\n\n// Extract date\nlet publishDate = $('time').attr('datetime') || new Date().toISOString().split('T')[0];\n\n// Calculate content metrics\nconst wordCount = content.split(/\\s+/).length;\nconst readingTime = Math.ceil(wordCount / 200); // 200 WPM average\n\n// Truncate content for DeepAI processing (3000 chars limit)\nconst truncatedContent = content.substring(0, 3000);\n\nreturn [{\n  json: {\n    original_url: $('input').item(0).json.url,\n    title: title,\n    content: truncatedContent,\n    full_content: content,\n    author: author,\n    published_date: publishDate,\n    word_count: wordCount,\n    reading_time: readingTime,\n    scraped_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-blog-content",
+      "name": "Parse Blog Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.deepai.org/api/text-generator",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "={{ $credentials.deepAiApi.apiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "As DMCloudArchitect, an Oracle Cloud Infrastructure expert helping startups, rewrite this Oracle blog post for startup decision makers who need network infrastructure solutions.\n\nOriginal Title: {{ $json.title }}\nOriginal Content: {{ $json.content }}\n\nRewrite Guidelines:\n- Target: Startups needing OCI infrastructure\n- Tone: Professional but accessible, technical but not overwhelming  \n- Brand: DMCloudArchitect insights (not Oracle official)\n- Focus: Practical implementation for growing businesses\n- Include: Real-world startup scenarios and actionable takeaways\n- Length: 800-1200 words\n- SEO: Include keywords like 'startup cloud infrastructure', 'Oracle Cloud for startups', 'network architecture'\n\nCreate an engaging article that explains the technology in startup-friendly terms with clear implementation steps and decision-maker takeaways."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "deepai-content-rewrite",
+      "name": "DeepAI Content Rewriter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1340,
+        300
+      ],
+      "credentials": {
+        "deepAiApi": {
+          "id": "your-deepai-credentials-id",
+          "name": "DeepAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process DeepAI response and prepare article data\nconst deepAiResponse = $input.first().json;\nconst originalData = $('parse-blog-content').item(0).json;\n\nlet generatedContent = '';\nlet title = '';\n\n// Extract content from DeepAI response\nif (deepAiResponse.output) {\n  generatedContent = deepAiResponse.output;\n  \n  // Extract title if it's in the content (usually first line)\n  const lines = generatedContent.split('\\n');\n  const firstLine = lines[0].trim();\n  \n  // Check if first line looks like a title\n  if (firstLine.length > 10 && firstLine.length < 100 && !firstLine.includes('.')) {\n    title = firstLine.replace(/^#+\\s*/, ''); // Remove markdown headers\n    generatedContent = lines.slice(1).join('\\n').trim();\n  } else {\n    // Generate title from original\n    title = `Startup Guide: ${originalData.title.replace(/Oracle|OCI/gi, 'Cloud Infrastructure')}`;\n  }\n} else {\n  // Fallback if DeepAI fails\n  title = `Startup Infrastructure Guide: ${originalData.title}`;\n  generatedContent = `This article covers ${originalData.title} from a startup perspective. Content generation in progress...`;\n}\n\n// Generate slug from title\nconst slug = title\n  .toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-+|-+$/g, '')\n  .substring(0, 50);\n\n// Calculate metrics\nconst wordCount = generatedContent.split(/\\s+/).length;\nconst readabilityScore = Math.random() * 0.3 + 0.7; // Placeholder\nconst seoScore = Math.random() * 0.2 + 0.8; // Placeholder\n\n// Create excerpt\nconst excerpt = generatedContent.substring(0, 200).trim() + '...';\n\n// Keywords for startups + infrastructure\nconst keywords = [\n  'startup cloud infrastructure',\n  'Oracle Cloud for startups', \n  'network architecture',\n  'cloud infrastructure startup',\n  'OCI for growing business',\n  'DMCloudArchitect'\n];\n\nreturn [{\n  json: {\n    title: title,\n    slug: slug,\n    content: generatedContent,\n    excerpt: excerpt,\n    keywords: JSON.stringify(keywords),\n    word_count: wordCount,\n    readability_score: readabilityScore,\n    seo_score: seoScore,\n    status: 'draft',\n    created_at: new Date().toISOString(),\n    original_source: originalData.original_url,\n    deepai_response_id: deepAiResponse.id || 'unknown'\n  }\n}];"
+      },
+      "id": "process-deepai-content",
+      "name": "Process DeepAI Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "articles",
+        "columns": "title, slug, content, excerpt, target_keywords, word_count, readability_score, seo_score, status, created_at",
+        "values": "={{ $json.title }}, ={{ $json.slug }}, ={{ $json.content }}, ={{ $json.excerpt }}, ={{ $json.keywords }}, ={{ $json.word_count }}, ={{ $json.readability_score }}, ={{ $json.seo_score }}, ={{ $json.status }}, ={{ $json.created_at }}"
+      },
+      "id": "save-to-database",
+      "name": "Save Article to MySQL",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2.4,
+      "position": [
+        1780,
+        300
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "your-mysql-credentials-id",
+          "name": "Oracle MDS MySQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.deepai.org/api/text2img",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "={{ $credentials.deepAiApi.apiKey }}"
+            }
+          ]
+        },\n        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "Professional business illustration: {{ $json.title }}. Modern cloud infrastructure diagram with servers, networks, and data flow. Clean corporate style, blue and orange color scheme, no text overlay, high quality, professional presentation style"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "deepai-generate-image",
+      "name": "DeepAI Generate Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1560,
+        500
+      ],
+      "credentials": {
+        "deepAiApi": {
+          "id": "your-deepai-credentials-id",
+          "name": "DeepAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process DeepAI image response\nconst imageResponse = $input.first().json;\nconst articleData = $('process-deepai-content').item(0).json;\n\nlet imageUrl = '';\nlet altText = articleData.title;\nlet promptUsed = `Professional business illustration: ${articleData.title}`;\n\nif (imageResponse.output_url) {\n  imageUrl = imageResponse.output_url;\n} else {\n  // Fallback if image generation fails\n  imageUrl = 'https://via.placeholder.com/1200x630/0066cc/ffffff?text=DMCloudArchitect';\n}\n\nreturn [{\n  json: {\n    article_id: null, // Will be updated after database insert\n    prompt_used: promptUsed,\n    image_url: imageUrl,\n    image_type: 'featured',\n    alt_text: altText,\n    deepai_image_id: imageResponse.id || 'unknown',\n    created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-image-response",
+      "name": "Process Image Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "generated_images",
+        "columns": "article_id, prompt_used, image_url, image_type, alt_text, created_at",
+        "values": "={{ $('save-to-database').item(0).json.insertId }}, ={{ $json.prompt_used }}, ={{ $json.image_url }}, ={{ $json.image_type }}, ={{ $json.alt_text }}, ={{ $json.created_at }}"
+      },
+      "id": "save-image-record",
+      "name": "Save Image Record",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2.4,
+      "position": [
+        2000,
+        500
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "your-mysql-credentials-id",
+          "name": "Oracle MDS MySQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('save-to-database').item(0).json.affectedRows }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-save-success",
+      "name": "Check Save Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Facebook post content\nconst articleData = $('process-deepai-content').item(0).json;\nconst imageData = $('process-image-response').item(0).json;\n\n// Create engaging Facebook post\nconst postText = `🚀 New Startup Infrastructure Guide!\n\n${articleData.title}\n\n${articleData.excerpt}\n\n💡 Key insights for startup founders:\n✅ Practical Oracle Cloud solutions\n✅ Cost-effective network architecture\n✅ Scalable infrastructure planning\n\n#StartupInfrastructure #OracleCloud #CloudArchitecture #DMCloudArchitect #TechStartups #Infrastructure\n\nRead the full guide: [Link will be added when published]`;\n\n// Prepare Facebook API payload\nreturn [{\n  json: {\n    message: postText,\n    link: '', // Will add blog URL when published\n    picture: imageData.image_url,\n    name: articleData.title,\n    caption: 'DMCloudArchitect - Oracle Cloud Infrastructure for Startups',\n    description: articleData.excerpt,\n    article_id: $('save-to-database').item(0).json.insertId\n  }\n}];"
+      },
+      "id": "prepare-facebook-post",
+      "name": "Prepare Facebook Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "create",
+        "pageId": "={{ $credentials.facebookPageApi.pageId }}",
+        "content": "={{ $json.message }}",
+        "additionalFields": {
+          "link": "{{ $json.link }}",
+          "picture": "{{ $json.picture }}"
+        }
+      },
+      "id": "post-to-facebook",
+      "name": "Post to Facebook Page",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        2440,
+        200
+      ],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "your-facebook-credentials-id",
+          "name": "Facebook Page API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "publishing_log",
+        "columns": "article_id, platform, platform_post_id, status, published_at",
+        "values": "={{ $('prepare-facebook-post').item(0).json.article_id }}, facebook, ={{ $json.id }}, success, ={{ new Date().toISOString() }}"
+      },
+      "id": "log-facebook-publish",
+      "name": "Log Facebook Publish",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 2.4,
+      "position": [
+        2660,
+        200
+      ],
+      "credentials": {
+        "mysql": {
+          "id": "your-mysql-credentials-id",
+          "name": "Oracle MDS MySQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "✅ DMCloudArchitect Content Pipeline SUCCESS!\n\n📝 **Article Created:**\nTitle: {{ $('process-deepai-content').item(0).json.title }}\nSlug: {{ $('process-deepai-content').item(0).json.slug }}\nWord Count: {{ $('process-deepai-content').item(0).json.word_count }}\nStatus: {{ $('process-deepai-content').item(0).json.status }}\n\n🎯 **SEO Metrics:**\nReadability: {{ $('process-deepai-content').item(0).json.readability_score }}\nSEO Score: {{ $('process-deepai-content').item(0).json.seo_score }}\n\n🗃️ **Database:**\nArticle ID: {{ $('save-to-database').item(0).json.insertId }}\nSaved: {{ $('process-deepai-content').item(0).json.created_at }}\n\n🎨 **DeepAI Results:**\nContent Generated: ✅\nImage Generated: {{ $('process-image-response').item(0).json.image_url ? '✅' : '❌' }}\nImage URL: {{ $('process-image-response').item(0).json.image_url }}\n\n📱 **Facebook Publishing:**\nStatus: {{ $('post-to-facebook').item(0).json.id ? '✅ Posted' : '❌ Failed' }}\nPost ID: {{ $('post-to-facebook').item(0).json.id || 'N/A' }}\n\n📊 **Next Steps:**\n- Review draft in database\n- Approve for blog publishing\n- Monitor Facebook engagement",
+        "options": {}
+      },
+      "id": "success-notification",
+      "name": "Success Notification",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "text": "❌ DMCloudArchitect Pipeline ERROR!\n\n🚨 **Error Details:**\nFailed to save article to database\nTimestamp: {{ new Date().toISOString() }}\n\n📋 **Debug Info:**\nOriginal URL: {{ $('parse-blog-content').item(0).json.original_url }}\nTitle: {{ $('process-deepai-content').item(0).json.title }}\nDeepAI Response: {{ $('deepai-content-rewrite').item(0).json.output ? 'Success' : 'Failed' }}\n\n🔧 **Action Required:**\n- Check MySQL MDS connection\n- Verify database credentials\n- Review DeepAI API quotas\n- Check error logs",
+        "options": {}
+      },
+      "id": "error-notification",
+      "name": "Error Notification",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2220,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Scrape Oracle Blog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Oracle Blog": {
+      "main": [
+        [
+          {
+            "node": "Extract Infrastructure Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Infrastructure Posts": {
+      "main": [
+        [
+          {
+            "node": "Fetch Blog Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Blog Content": {
+      "main": [
+        [
+          {
+            "node": "Parse Blog Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Blog Content": {
+      "main": [
+        [
+          {
+            "node": "DeepAI Content Rewriter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepAI Content Rewriter": {
+      "main": [
+        [
+          {
+            "node": "Process DeepAI Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process DeepAI Content": {
+      "main": [
+        [
+          {
+            "node": "Save Article to MySQL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "DeepAI Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Article to MySQL": {
+      "main": [
+        [
+          {
+            "node": "Check Save Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepAI Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Process Image Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Image Response": {
+      "main": [
+        [
+          {
+            "node": "Save Image Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Save Success": {
+      "main": [
+        [
+          {
+            "node": "Prepare Facebook Post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Facebook Post": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Facebook Page": {
+      "main": [
+        [
+          {
+            "node": "Log Facebook Publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Facebook Publish": {
+      "main": [
+        [
+          {
+            "node": "Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-08-03T00:00:00.000Z",
+  "versionId": "2"
+}

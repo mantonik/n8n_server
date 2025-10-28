@@ -1,0 +1,136 @@
+-- DMCloudArchitect Content Management Database Schema
+-- Create database and user (run as admin)
+
+CREATE DATABASE IF NOT EXISTS dm_content_engine;
+USE dm_content_engine;
+
+-- Create dedicated user for the application
+-- CREATE USER 'dm_content_usr'@'%' IDENTIFIED BY 'Edcujhng%rgtfd';
+-- GRANT ALL PRIVILEGES ON dm_content_engine.* TO 'dm_content'@'%';
+-- FLUSH PRIVILEGES;
+
+CREATE USER 'dm_content_usr'@'%' IDENTIFIED BY 'Edc3uj!hng%rgtfd';
+GRANT ALL PRIVILEGES ON dm_content_engine.* TO 'dm_content_usr'@'%';
+
+-- Research sources table
+CREATE TABLE research_sources (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    source_name VARCHAR(100) NOT NULL,
+    base_url VARCHAR(255) NOT NULL,
+    source_type ENUM('blog', 'news', 'rss', 'api') DEFAULT 'blog',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_scraped TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Scraped content table (raw Oracle blog posts)
+CREATE TABLE scraped_content (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    source_id INT,
+    original_url VARCHAR(500) NOT NULL UNIQUE,
+    title VARCHAR(500),
+    content TEXT,
+    author VARCHAR(200),
+    published_date DATE,
+    tags JSON,
+    content_hash VARCHAR(64), -- SHA256 hash to detect duplicates
+    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_relevant BOOLEAN DEFAULT NULL, -- NULL=not reviewed, TRUE=relevant, FALSE=not relevant
+    relevance_score DECIMAL(3,2) DEFAULT NULL, -- 0.00 to 1.00
+    FOREIGN KEY (source_id) REFERENCES research_sources(id),
+    INDEX idx_url (original_url),
+    INDEX idx_published (published_date),
+    INDEX idx_relevant (is_relevant)
+);
+
+-- Generated articles table
+CREATE TABLE articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(500) NOT NULL,
+    slug VARCHAR(500) NOT NULL UNIQUE,
+    content LONGTEXT,
+    excerpt TEXT,
+    target_keywords JSON, -- SEO keywords
+    word_count INT,
+    readability_score DECIMAL(3,2),
+    seo_score DECIMAL(3,2),
+    status ENUM('draft', 'review', 'approved', 'published', 'rejected') DEFAULT 'draft',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    reviewed_at TIMESTAMP NULL,
+    published_at TIMESTAMP NULL,
+    review_notes TEXT,
+    INDEX idx_status (status),
+    INDEX idx_slug (slug)
+);
+
+-- Source articles relationship (many-to-many)
+CREATE TABLE article_sources (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT,
+    scraped_content_id INT,
+    influence_weight DECIMAL(3,2) DEFAULT 1.00, -- How much this source influenced the article
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+    FOREIGN KEY (scraped_content_id) REFERENCES scraped_content(id),
+    UNIQUE KEY unique_article_source (article_id, scraped_content_id)
+);
+
+-- Generated images table
+CREATE TABLE generated_images (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT,
+    prompt_used TEXT,
+    image_url VARCHAR(500),
+    local_path VARCHAR(500),
+    deepai_job_id VARCHAR(100),
+    image_type ENUM('featured', 'inline', 'social') DEFAULT 'featured',
+    alt_text VARCHAR(200),
+    file_size INT,
+    dimensions VARCHAR(20), -- e.g., "1200x630"
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+    INDEX idx_article (article_id)
+);
+
+-- Publishing log table
+CREATE TABLE publishing_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT,
+    platform VARCHAR(50), -- 'wordpress', 'facebook', 'linkedin', 'instagram'
+    platform_post_id VARCHAR(200),
+    platform_url VARCHAR(500),
+    status ENUM('pending', 'success', 'failed', 'retrying') DEFAULT 'pending',
+    error_message TEXT,
+    published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    retry_count INT DEFAULT 0,
+    FOREIGN KEY (article_id) REFERENCES articles(id),
+    INDEX idx_article_platform (article_id, platform),
+    INDEX idx_status (status)
+);
+
+-- System configuration table
+CREATE TABLE system_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    config_key VARCHAR(100) NOT NULL UNIQUE,
+    config_value TEXT,
+    description TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Insert initial configuration
+INSERT INTO system_config (config_key, config_value, description) VALUES
+('deepai_api_key', '', 'DeepAI API key for content and image generation'),
+('scraping_interval_hours', '24', 'Hours between scraping runs'),
+('min_word_count', '800', 'Minimum word count for articles'),
+('max_word_count', '1500', 'Maximum word count for articles'),
+('brand_name', 'DMCloudArchitect', 'Brand name for articles'),
+('target_audience', 'startups', 'Target audience description'),
+('last_scrape_run', '', 'Timestamp of last successful scrape');
+
+-- Insert Oracle blog as initial source
+INSERT INTO research_sources (source_name, base_url, source_type) VALUES
+('Oracle Cloud Infrastructure Blog', 'https://blogs.oracle.com/cloud-infrastructure/', 'blog'),
+('Oracle Developers Blog', 'https://blogs.oracle.com/developers/', 'blog'),
+('Oracle MySQL Blog', 'https://blogs.oracle.com/mysql/', 'blog');

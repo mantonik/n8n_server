@@ -1,0 +1,238 @@
+# N8N DMCloudArchitect Content Pipeline Setup
+
+## Overview
+This N8N workflow automatically:
+1. **Scrapes** Oracle Cloud Infrastructure blogs daily
+2. **Filters** for infrastructure-related content
+3. **Rewrites** content using AI for startup audience
+4. **Generates** featured images with AI
+5. **Stores** everything in your MySQL MDS database
+6. **Provides** success/error notifications
+
+## Prerequisites Setup
+
+### 1. Database Setup
+First, run the MySQL schema in your MDS instance to create the required tables.
+
+### 2. N8N Credentials Configuration
+
+#### A. MySQL Database Credential
+1. In N8N, go to **Settings → Credentials**
+2. Create **New Credential → MySQL**
+3. Configure:
+   ```
+   Name: Oracle MDS MySQL
+   Host: your-mds-endpoint.mysql.oraclecloud.com
+   Port: 3306
+   Database: dm_content_engine
+   Username: your_username
+   Password: your_password
+   SSL: Enable (recommended for MDS)
+   ```
+
+#### B. DeepAI API Credential (for AI content generation)
+1. Create **New Credential → Generic Credential**
+2. Configure:
+   ```
+   Name: DeepAI API
+   Property Name: apiKey
+   Property Value: your-deepai-api-key
+   ```
+
+#### C. Facebook Page API Credential (for social posting)
+1. Create **New Credential → Facebook Graph API**
+2. Configure:
+   ```
+   Name: Facebook Page API
+   Access Token: your-facebook-page-access-token
+   Page ID: your-facebook-page-id
+   ```
+
+**To get Facebook credentials:**
+1. Go to [Facebook Developers](https://developers.facebook.com/)
+2. Create an app with Pages permissions
+3. Generate a Page Access Token
+4. Get your Page ID from your Facebook page settings
+
+### 3. Install Required N8N Packages
+In your N8N Docker container, ensure these packages are available:
+```bash
+# If using Docker, exec into container
+docker exec -it your-n8n-container bash
+
+# Install required npm packages
+npm install cheerio
+```
+
+## Workflow Import and Setup
+
+### 1. Import Workflow
+1. Copy the JSON workflow configuration
+2. In N8N: **Import from JSON**
+3. Paste the workflow JSON
+
+### 2. Update Credential References
+After import, update these nodes with your credential IDs:
+
+#### MySQL Nodes:
+- **Save Article to MySQL** node
+- **Save Image Record** node  
+- **Log Facebook Publish** node
+
+Update the `credentials.mysql.id` field with your MySQL credential ID.
+
+#### DeepAI Nodes:
+- **DeepAI Content Rewriter** node
+- **DeepAI Generate Image** node
+
+Update the `credentials.deepAiApi.id` field with your DeepAI credential ID.
+
+#### Facebook Node:
+- **Post to Facebook Page** node
+
+Update the `credentials.facebookGraphApi.id` field with your Facebook credential ID.
+
+### 3. Test Individual Nodes
+
+#### Test Database Connection:
+1. Click on **Save to MySQL** node
+2. Click **Test step** to verify database connectivity
+
+#### Test DeepAI Integration:
+1. Click on **DeepAI Content Rewriter** node
+2. Provide test input and verify DeepAI text generation response
+3. Test **DeepAI Generate Image** node with a simple prompt
+
+#### Test Facebook Integration:
+1. Click on **Post to Facebook Page** node  
+2. Verify Facebook Page API connection
+3. Check that your Page ID and access token are valid
+
+## Workflow Configuration Options
+
+### Scheduling
+The workflow is set to run **daily at 6 AM**. To modify:
+1. Click **Daily Schedule** node
+2. Adjust the **Rule** → **Interval** settings
+
+### Content Filtering
+To modify which Oracle blog posts get processed:
+1. Edit **Extract Infrastructure Posts** node
+2. Update the `keywords` array in the JavaScript code:
+   ```javascript
+   const keywords = ['infrastructure', 'network', 'compute', 'storage', 'database', 
+                    'mysql', 'mds', 'heatwave', 'vm', 'virtual machine', 'vcn'];
+   ```
+
+### DeepAI Integration
+To modify content generation:
+1. Edit **DeepAI Content Rewriter** node  
+2. Update the **text** parameter in body parameters
+3. Adjust the prompt for different writing styles
+
+### Facebook Posting
+To customize Facebook posts:
+1. Edit **Prepare Facebook Post** node
+2. Modify the `postText` variable in JavaScript
+3. Add/remove hashtags and formatting
+
+### Image Generation  
+To change image style:
+1. Edit **DeepAI Generate Image** node
+2. Update the **text** parameter with different style descriptions
+3. Try prompts like: "minimalist", "corporate", "tech illustration", etc.
+
+## Monitoring and Debugging
+
+### Execution Logs
+- Check **Workflow Executions** for run history
+- Review individual node outputs for debugging
+
+### Database Monitoring
+Query your MySQL database to see results:
+```sql
+-- Check scraped content
+SELECT COUNT(*) FROM articles WHERE status = 'draft';
+
+-- View recent articles
+SELECT title, word_count, created_at FROM articles 
+ORDER BY created_at DESC LIMIT 5;
+
+-- Check image generation
+SELECT COUNT(*) FROM generated_images;
+```
+
+### Error Handling
+The workflow includes:
+- **Success notifications** when articles are created
+- **Error notifications** when database saves fail
+- **Conditional logic** to handle various failure scenarios
+
+## Production Optimizations
+
+### Rate Limiting
+Add delays between HTTP requests:
+1. Insert **Wait** nodes after HTTP Request nodes
+2. Set 2-3 second delays to be respectful to Oracle's servers
+
+### Error Recovery
+1. Enable **Retry on Fail** for HTTP Request nodes
+2. Set appropriate timeout values
+3. Add alternative paths for common failure scenarios
+
+### Content Quality
+1. Add validation nodes to check content quality
+2. Implement approval workflows before publishing
+3. Add duplicate detection logic
+
+## Next Steps After Testing
+
+Once the basic pipeline works:
+
+1. **Add Publishing Nodes:**
+   - WordPress/Blog API integration
+   - Facebook Page posting
+   - LinkedIn company page posting
+
+2. **Add Content Review:**
+   - Manual approval step
+   - Content quality scoring
+   - SEO optimization checks
+
+3. **Enhance AI Integration:**
+   - Switch to DeepAI for content generation
+   - Add multiple AI model comparisons
+   - Implement content A/B testing
+
+## Troubleshooting Common Issues
+
+### Database Connection Fails
+- Verify MDS endpoint and credentials
+- Check SSL/TLS settings
+- Ensure N8N can reach Oracle Cloud (firewall/security groups)
+
+### AI Requests Fail
+- Verify OpenAI API key and credits
+- Check rate limits
+- Review prompt length and format
+
+### Scraping Issues
+- Oracle may block requests - add User-Agent headers
+- Implement random delays between requests
+- Check if Oracle blog structure changed
+
+### Memory Issues
+- Limit content length in processing nodes
+- Process fewer posts per run
+- Add cleanup for large data objects
+
+## Success Metrics
+
+Monitor these KPIs:
+- **Articles created per day**
+- **Content relevance score** (infrastructure vs other topics)
+- **Word count consistency** (800-1500 words)
+- **Image generation success rate**
+- **Database save success rate**
+
+The workflow is designed to be your starting point for learning N8N AI agents while building a practical content system!
